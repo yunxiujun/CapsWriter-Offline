@@ -86,6 +86,7 @@ class ToastWindowBase(ABC):
         initial_height: int,
         position_y: int,
         fixed: bool,
+        auto_dismiss: bool,
         streaming: bool,
         stop_callback: Optional[Callable[[], None]],
         markdown_enabled: bool,
@@ -105,6 +106,7 @@ class ToastWindowBase(ABC):
             initial_height: 初始高度，0 表示自动计算
             position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
             fixed: 是否固定在 position_y，固定后不可拖动改变位置
+            auto_dismiss: 是否在 duration 后自动消失
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown_enabled: 是否启用 Markdown 渲染
@@ -121,6 +123,8 @@ class ToastWindowBase(ABC):
         self.initial_height = initial_height
         self.position_y = position_y
         self.fixed = fixed
+        self.auto_dismiss = auto_dismiss
+        self.auto_dismiss_callback: Optional[Callable[[bool], None]] = None
         
         # 状态标志
         self.pause = False
@@ -165,8 +169,7 @@ class ToastWindowBase(ABC):
         # 显示窗口
         self.window.deiconify()
         
-        # 如果不是流式模式，设置定时销毁
-        if not self.streaming:
+        if not self.streaming and self.auto_dismiss:
             self._start_destroy_timer()
 
     def _create_control_buttons(self) -> None:
@@ -199,7 +202,15 @@ class ToastWindowBase(ABC):
             **button_options
         )
         self.unpin_button.pack(side=tk.TOP, padx=(0, 4), pady=(1, 4))
+        self.dismiss_button = tk.Button(
+            self.controls_frame,
+            text='消',
+            command=self.toggle_auto_dismiss,
+            **button_options
+        )
+        self.dismiss_button.pack(side=tk.TOP, padx=(0, 4), pady=(1, 4))
         self._update_pin_button_state()
+        self._update_dismiss_button_state()
 
     def _update_pin_button_state(self) -> None:
         """同步固定/移动按钮的互斥高亮状态。"""
@@ -217,17 +228,33 @@ class ToastWindowBase(ABC):
         except tk.TclError:
             pass
 
+    def _update_dismiss_button_state(self) -> None:
+        """同步自动消失按钮状态：消=会自动消失，留=不会自动消失。"""
+        try:
+            active_bg = self.fg
+            active_fg = self.bg
+            normal_bg = self.bg
+            normal_fg = self.fg
+            self.dismiss_button.config(text='消' if self.auto_dismiss else '留')
+            self.dismiss_button.config(
+                bg=active_bg,
+                fg=active_fg,
+                activebackground=active_bg,
+                activeforeground=active_fg,
+            )
+            if self.auto_dismiss:
+                self.dismiss_button.config(bg=normal_bg, fg=normal_fg, activebackground=normal_bg, activeforeground=normal_fg)
+        except tk.TclError:
+            pass
+
     def pin_window(self) -> None:
-        """固定当前 Toast：锁住当前位置，并取消自动关闭。"""
+        """固定当前 Toast：锁住当前位置，不影响是否自动消失。"""
         try:
             self.window.update_idletasks()
             self.position_y = self.window.winfo_y()
             self.fixed = True
             self.pause = False
             self._update_pin_button_state()
-            if self.timer_id:
-                self.window.after_cancel(self.timer_id)
-                self.timer_id = None
         except tk.TclError as e:
             logger.warning(f"固定 Toast 失败: {e}")
 
@@ -240,6 +267,22 @@ class ToastWindowBase(ABC):
                 self._start_destroy_timer()
         except tk.TclError as e:
             logger.warning(f"取消固定 Toast 失败: {e}")
+
+    def toggle_auto_dismiss(self) -> None:
+        """切换是否自动消失，并记住给后续 Toast 使用。"""
+        try:
+            self.auto_dismiss = not self.auto_dismiss
+            if self.auto_dismiss_callback:
+                self.auto_dismiss_callback(self.auto_dismiss)
+            self._update_dismiss_button_state()
+            if self.auto_dismiss:
+                if not self.streaming and not self.mouse_inside:
+                    self._start_destroy_timer()
+            elif self.timer_id:
+                self.window.after_cancel(self.timer_id)
+                self.timer_id = None
+        except tk.TclError as e:
+            logger.warning(f"切换 Toast 自动消失状态失败: {e}")
 
     def _bind_common_events(self) -> None:
         """绑定通用事件（拖动、鼠标进入/离开、滚轮、ESC、复制）"""
@@ -311,7 +354,7 @@ class ToastWindowBase(ABC):
     def _on_mouse_leave(self, event: tk.Event) -> None:
         """鼠标离开窗口，恢复自动关闭计时器"""
         self.mouse_inside = False
-        if not self.streaming and not self.fixed:
+        if not self.streaming and self.auto_dismiss:
             self._start_destroy_timer()
 
     def _on_drag_start(self, event: tk.Event) -> None:
@@ -437,7 +480,7 @@ class ToastWindowBase(ABC):
 
     def _start_destroy_timer(self) -> None:
         """启动自动销毁计时器"""
-        if self.fixed:
+        if not self.auto_dismiss:
             if self.timer_id:
                 self.window.after_cancel(self.timer_id)
                 self.timer_id = None
@@ -453,7 +496,7 @@ class ToastWindowBase(ABC):
             event: 事件对象（ESC 键触发时传入）
         """
         try:
-            if self.fixed and event is None:
+            if not self.auto_dismiss and event is None:
                 return
 
             # 调用停止回调（用于停止 LLM 输出）
@@ -636,5 +679,5 @@ class ToastWindowBase(ABC):
                 self._switch_to_markdown()
 
             # 只有当鼠标不在窗口内时才启动计时器
-            if not self.mouse_inside:
+            if not self.mouse_inside and self.auto_dismiss:
                 self._start_destroy_timer()

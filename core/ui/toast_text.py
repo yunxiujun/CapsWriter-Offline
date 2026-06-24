@@ -51,6 +51,7 @@ class ToastWindowText(ToastWindowBase):
         initial_height: int = 0,
         position_y: int = -1,
         fixed: bool = False,
+        auto_dismiss: bool = True,
         streaming: bool = False,
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
@@ -70,6 +71,7 @@ class ToastWindowText(ToastWindowBase):
             initial_height: 初始高度，0 表示自动计算
             position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
             fixed: 是否固定在 position_y，固定后不可拖动改变位置
+            auto_dismiss: 是否在 duration 后自动消失
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown: 是否启用 Markdown 渲染
@@ -78,7 +80,7 @@ class ToastWindowText(ToastWindowBase):
         # 初始化基类
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
-            duration, initial_width, initial_height, position_y, fixed, streaming,
+            duration, initial_width, initial_height, position_y, fixed, auto_dismiss, streaming,
             stop_callback, markdown, editable
         )
 

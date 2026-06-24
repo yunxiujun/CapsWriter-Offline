@@ -55,6 +55,7 @@ def toast(
     initial_height: int = 0,
     position_y: int = -1,
     fixed: bool = False,
+    auto_dismiss: bool = True,
     streaming: bool = False,
     window_type: Literal['text', 'label'] = 'text',
     markdown: bool = False
@@ -71,6 +72,7 @@ def toast(
         initial_height: 初始高度，0 表示自动计算
         position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
         fixed: 是否固定在 position_y，固定后不可拖动改变位置
+        auto_dismiss: 是否在 duration 后自动消失
         streaming: 是否为流式模式
         window_type: 窗口类型 ('text' 或 'label')
         markdown: 是否启用 Markdown 渲染
@@ -86,6 +88,7 @@ def toast(
         initial_height=initial_height,
         position_y=position_y,
         fixed=fixed,
+        auto_dismiss=auto_dismiss,
         streaming=streaming,
         window_type=window_type,
         markdown=markdown
@@ -103,6 +106,7 @@ def toast_stream(
     initial_height: int = 0,
     position_y: int = -1,
     fixed: bool = False,
+    auto_dismiss: bool = True,
     window_type: Literal['text', 'label'] = 'text',
     markdown: bool = False
 ) -> None:
@@ -118,6 +122,7 @@ def toast_stream(
         initial_height: 初始高度
         position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
         fixed: 是否固定在 position_y，固定后不可拖动改变位置
+        auto_dismiss: 是否在 duration 后自动消失
         window_type: 窗口类型 ('text' 或 'label')
         markdown: 是否启用 Markdown 渲染
     """
@@ -134,6 +139,7 @@ def toast_stream(
         initial_height=initial_height,
         position_y=position_y,
         fixed=fixed,
+        auto_dismiss=auto_dismiss,
         streaming=True,
         window_type=window_type,
         markdown=markdown

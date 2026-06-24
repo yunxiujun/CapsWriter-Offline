@@ -67,6 +67,7 @@ class ToastMessage:
         initial_height: 初始高度，0 表示自动计算
         position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
         fixed: 是否固定在 position_y，固定后不可拖动改变位置
+        auto_dismiss: 是否在 duration 后自动消失
         streaming: 是否为流式模式
         window_type: 窗口类型 ('text' 或 'label')
         stop_callback: 窗口关闭时的回调函数
@@ -82,11 +83,13 @@ class ToastMessage:
     initial_height: int = 0
     position_y: int = -1
     fixed: bool = False
+    auto_dismiss: bool = True
     streaming: bool = False
     window_type: Literal['text', 'label'] = 'text'
     stop_callback: Optional[Callable[[], None]] = None
     markdown: bool = False
     editable: bool = False  # Markdown 渲染后是否允许编辑
+    auto_dismiss_callback: Optional[Callable[[bool], None]] = None
 
 
 # ============================================================
@@ -124,6 +127,7 @@ class ToastMessageManager:
         self.is_running = False
         self.active_windows: List = []  # 运行时类型，避免循环导入
         self.root: Optional[tk.Tk] = None
+        self.auto_dismiss_preference: Optional[bool] = None
 
         # 在子线程中启动 Tkinter
         self.manager_thread = threading.Thread(
@@ -174,6 +178,9 @@ class ToastMessageManager:
 
                 # 根据 window_type 选择窗口类
                 WindowClass = ToastWindowLabel if msg.window_type == 'label' else ToastWindowText
+                if self.auto_dismiss_preference is not None:
+                    msg.auto_dismiss = self.auto_dismiss_preference
+                msg.auto_dismiss_callback = self._set_auto_dismiss_preference
 
                 toast_window = WindowClass(
                     self.root,
@@ -187,11 +194,13 @@ class ToastMessageManager:
                     msg.initial_height,
                     msg.position_y,
                     msg.fixed,
+                    msg.auto_dismiss,
                     streaming=msg.streaming,
                     stop_callback=msg.stop_callback,
                     markdown=msg.markdown,
                     editable=msg.editable
                 )
+                toast_window.auto_dismiss_callback = msg.auto_dismiss_callback
 
                 # 保存消息ID到窗口对象
                 toast_window._msg_id = msg_id
@@ -227,6 +236,10 @@ class ToastMessageManager:
         """从活动窗口列表中移除窗口"""
         if window in self.active_windows:
             self.active_windows.remove(window)
+
+    def _set_auto_dismiss_preference(self, auto_dismiss: bool) -> None:
+        """记住用户最近一次选择的 Toast 自动消失状态。"""
+        self.auto_dismiss_preference = auto_dismiss
 
     def add_message(self, msg: ToastMessage) -> Optional[str]:
         """添加 ToastMessage 对象到队列
