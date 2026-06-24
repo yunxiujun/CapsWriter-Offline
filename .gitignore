@@ -163,6 +163,7 @@ logs/
 # 运行生成的临时文件 / 二进制
 *.exe
 *.log
+.toast_state.json
 
 
 

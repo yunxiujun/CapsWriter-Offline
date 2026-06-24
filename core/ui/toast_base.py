@@ -124,6 +124,7 @@ class ToastWindowBase(ABC):
         self.position_y = position_y
         self.fixed = fixed
         self.auto_dismiss = auto_dismiss
+        self.fixed_callback: Optional[Callable[[bool], None]] = None
         self.auto_dismiss_callback: Optional[Callable[[bool], None]] = None
         
         # 状态标志
@@ -253,6 +254,8 @@ class ToastWindowBase(ABC):
             self.window.update_idletasks()
             self.position_y = self.window.winfo_y()
             self.fixed = True
+            if self.fixed_callback:
+                self.fixed_callback(self.fixed)
             self.pause = False
             self._update_pin_button_state()
         except tk.TclError as e:
@@ -262,6 +265,8 @@ class ToastWindowBase(ABC):
         """取消固定：允许拖动，并恢复自动关闭计时。"""
         try:
             self.fixed = False
+            if self.fixed_callback:
+                self.fixed_callback(self.fixed)
             self._update_pin_button_state()
             if not self.streaming and not self.mouse_inside:
                 self._start_destroy_timer()

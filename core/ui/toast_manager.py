@@ -7,8 +7,10 @@ Toast 消息管理器模块
 import logging
 import threading
 import tkinter as tk
+import json
 from queue import Queue
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Optional, Callable, Union, List, TYPE_CHECKING
 import sys
 import os
@@ -89,6 +91,7 @@ class ToastMessage:
     stop_callback: Optional[Callable[[], None]] = None
     markdown: bool = False
     editable: bool = False  # Markdown 渲染后是否允许编辑
+    fixed_callback: Optional[Callable[[bool], None]] = None
     auto_dismiss_callback: Optional[Callable[[bool], None]] = None
 
 
@@ -127,7 +130,10 @@ class ToastMessageManager:
         self.is_running = False
         self.active_windows: List = []  # 运行时类型，避免循环导入
         self.root: Optional[tk.Tk] = None
+        self.state_path = Path(__file__).resolve().parents[2] / '.toast_state.json'
+        self.fixed_preference: Optional[bool] = None
         self.auto_dismiss_preference: Optional[bool] = None
+        self._load_state()
 
         # 在子线程中启动 Tkinter
         self.manager_thread = threading.Thread(
@@ -178,8 +184,11 @@ class ToastMessageManager:
 
                 # 根据 window_type 选择窗口类
                 WindowClass = ToastWindowLabel if msg.window_type == 'label' else ToastWindowText
+                if self.fixed_preference is not None:
+                    msg.fixed = self.fixed_preference
                 if self.auto_dismiss_preference is not None:
                     msg.auto_dismiss = self.auto_dismiss_preference
+                msg.fixed_callback = self._set_fixed_preference
                 msg.auto_dismiss_callback = self._set_auto_dismiss_preference
 
                 toast_window = WindowClass(
@@ -200,6 +209,7 @@ class ToastMessageManager:
                     markdown=msg.markdown,
                     editable=msg.editable
                 )
+                toast_window.fixed_callback = msg.fixed_callback
                 toast_window.auto_dismiss_callback = msg.auto_dismiss_callback
 
                 # 保存消息ID到窗口对象
@@ -240,6 +250,41 @@ class ToastMessageManager:
     def _set_auto_dismiss_preference(self, auto_dismiss: bool) -> None:
         """记住用户最近一次选择的 Toast 自动消失状态。"""
         self.auto_dismiss_preference = auto_dismiss
+        self._save_state()
+
+    def _set_fixed_preference(self, fixed: bool) -> None:
+        """记住用户最近一次选择的 Toast 固定/移动状态。"""
+        self.fixed_preference = fixed
+        self._save_state()
+
+    def _load_state(self) -> None:
+        """读取 Toast 持久化状态。"""
+        try:
+            if not self.state_path.exists():
+                return
+            data = json.loads(self.state_path.read_text(encoding='utf-8'))
+            fixed = data.get('fixed')
+            auto_dismiss = data.get('auto_dismiss')
+            if isinstance(fixed, bool):
+                self.fixed_preference = fixed
+            if isinstance(auto_dismiss, bool):
+                self.auto_dismiss_preference = auto_dismiss
+        except Exception as e:
+            logger.warning(f"读取 Toast 状态失败: {e}")
+
+    def _save_state(self) -> None:
+        """保存 Toast 持久化状态。"""
+        try:
+            data = {
+                'fixed': self.fixed_preference,
+                'auto_dismiss': self.auto_dismiss_preference,
+            }
+            self.state_path.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding='utf-8'
+            )
+        except Exception as e:
+            logger.warning(f"保存 Toast 状态失败: {e}")
 
     def add_message(self, msg: ToastMessage) -> Optional[str]:
         """添加 ToastMessage 对象到队列
