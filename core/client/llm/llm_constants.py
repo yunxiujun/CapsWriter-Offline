@@ -62,6 +62,7 @@ class APIConfig:
         'zhipu': 'https://open.bigmodel.cn/api/paas/v4',
         'volcengine': 'https://ark.cn-beijing.volces.com/api/v3',
         'cerebras': 'https://api.cerebras.ai/v1',
+        'xai': 'https://api.x.ai/v1',
     }
 
     # 默认 API Keys
@@ -73,6 +74,7 @@ class APIConfig:
         'moonshot': '',
         'zhipu': '',
         'cerebras': '',
+        'xai': '',
     }
 
     # 请求超时配置（秒）
@@ -86,6 +88,7 @@ class APIConfig:
         'moonshot': 2.0,     # Moonshot API
         'zhipu': 2.0,        # 智谱 API
         'cerebras': 2.0,     # Cerebras API
+        'xai': 60.0,         # xAI/Grok API，联网搜索和推理可能需要更长时间
         'claude': 2.0,       # Claude API
         'gemini': 2.0,       # Gemini API
     }

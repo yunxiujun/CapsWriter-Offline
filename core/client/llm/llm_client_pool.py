@@ -28,17 +28,17 @@ class ClientPool:
         Returns:
             OpenAI 或 ollama.Client 客户端实例
         """
+        # 获取 api_url（优先使用配置的 URL，否则使用默认值）
+        final_url = api_url or APIConfig.DEFAULT_API_URLS.get(provider)
+        provider_key = 'xai' if final_url and 'api.x.ai' in final_url else provider
         cache_key = f"{provider}_{api_url}"
 
         if cache_key not in self._clients:
-            # 获取 api_url（优先使用配置的 URL，否则使用默认值）
-            final_url = api_url or APIConfig.DEFAULT_API_URLS.get(provider)
-
             # 获取 api_key
-            final_key = api_key or APIConfig.DEFAULT_API_KEYS.get(provider, '')
+            final_key = api_key or APIConfig.DEFAULT_API_KEYS.get(provider_key, '')
 
             # 获取超时配置（根据 provider 选择，未配置则使用默认值）
-            timeout = APIConfig.DEFAULT_TIMEOUTS.get(provider, APIConfig.DEFAULT_TIMEOUT)
+            timeout = APIConfig.DEFAULT_TIMEOUTS.get(provider_key, APIConfig.DEFAULT_TIMEOUT)
 
             # 创建客户端
             if provider == 'ollama':

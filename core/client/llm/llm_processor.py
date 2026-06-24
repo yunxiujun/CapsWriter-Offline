@@ -243,6 +243,11 @@ class LLMProcessor:
         """专门处理 OpenAI 兼容 API 流响应"""
 
         params = self._build_request_params(role_config, messages)
+        if params.pop('use_responses_api', False):
+            return self._process_openai_response(
+                client, params, callback, should_stop_check
+            )
+
         params['stream'] = True
 
         if not role_config.enable_thinking:
@@ -271,3 +276,62 @@ class LLMProcessor:
 
         generation_time = time.time() - generation_start_time if generation_start_time else 0.0
         return full_response.strip(), total_tokens, generation_time
+
+    def _process_openai_response(
+        self,
+        client: Any,
+        params: Dict[str, Any],
+        callback: Optional[Callable[[str], None]],
+        should_stop_check: Optional[Callable[[], bool]]
+    ) -> Tuple[str, int, float]:
+        """处理 OpenAI Responses API，用于 xAI web_search 等内置工具。"""
+
+        if should_stop_check and should_stop_check():
+            return "", 0, 0.0
+
+        response_params = {
+            'model': params['model'],
+            'input': params['messages'],
+        }
+
+        passthrough_keys = [
+            'tools',
+            'tool_choice',
+            'temperature',
+            'top_p',
+            'max_tokens',
+            'max_output_tokens',
+            'reasoning',
+            'include',
+            'store',
+        ]
+        for key in passthrough_keys:
+            if key in params:
+                response_params[key] = params[key]
+
+        if 'max_tokens' in response_params and 'max_output_tokens' not in response_params:
+            response_params['max_output_tokens'] = response_params.pop('max_tokens')
+
+        start_time = time.time()
+        response = client.responses.create(**response_params)
+        full_response = getattr(response, 'output_text', '') or self._extract_response_text(response)
+
+        if callback and full_response:
+            callback(full_response)
+
+        total_tokens = 0
+        usage = getattr(response, 'usage', None)
+        if usage:
+            total_tokens = getattr(usage, 'output_tokens', 0) or getattr(usage, 'completion_tokens', 0) or 0
+
+        return full_response.strip(), total_tokens, time.time() - start_time
+
+    def _extract_response_text(self, response: Any) -> str:
+        """兼容不同 SDK 版本的 Responses API 文本结构。"""
+        parts = []
+        for item in getattr(response, 'output', []) or []:
+            for content in getattr(item, 'content', []) or []:
+                text = getattr(content, 'text', None)
+                if text:
+                    parts.append(text)
+        return ''.join(parts)
