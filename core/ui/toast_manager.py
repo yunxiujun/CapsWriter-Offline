@@ -65,6 +65,8 @@ class ToastMessage:
         duration: 显示时长（毫秒）
         initial_width: 初始宽度，0-1 为屏幕比例，>1 为像素值
         initial_height: 初始高度，0 表示自动计算
+        position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
+        fixed: 是否固定在 position_y，固定后不可拖动改变位置
         streaming: 是否为流式模式
         window_type: 窗口类型 ('text' 或 'label')
         stop_callback: 窗口关闭时的回调函数
@@ -78,6 +80,8 @@ class ToastMessage:
     duration: int = DEFAULT_DURATION_MS
     initial_width: Union[float, int] = DEFAULT_INITIAL_WIDTH
     initial_height: int = 0
+    position_y: int = -1
+    fixed: bool = False
     streaming: bool = False
     window_type: Literal['text', 'label'] = 'text'
     stop_callback: Optional[Callable[[], None]] = None
@@ -181,6 +185,8 @@ class ToastMessageManager:
                     msg.duration,
                     msg.initial_width,
                     msg.initial_height,
+                    msg.position_y,
+                    msg.fixed,
                     streaming=msg.streaming,
                     stop_callback=msg.stop_callback,
                     markdown=msg.markdown,

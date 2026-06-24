@@ -37,6 +37,8 @@ output_mode: str = 'typing'                  # 输出方式: 'typing' 或 'toast
 # Toast 弹窗配置
 toast_initial_width: float = 0.5             # Toast 窗口初始宽度（0.5 = 50% 屏幕宽度）
 toast_initial_height: int = 0                # Toast 窗口初始高度（0 表示自动计算）
+toast_position_y: int = -1                   # Toast 窗口初始屏幕高度/y 坐标（-1 表示屏幕中间）
+toast_fixed: bool = False                    # 是否固定在 toast_position_y，固定后不可拖动改变位置
 toast_font_family: str = ''                  # Toast 字体（空字符串表示使用系统默认）
 toast_font_size: int = 16                    # Toast 字体大小
 toast_font_color: str = 'white'              # Toast 字体颜色

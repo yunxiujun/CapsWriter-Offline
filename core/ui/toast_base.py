@@ -84,6 +84,8 @@ class ToastWindowBase(ABC):
         duration: int,
         initial_width: Union[float, int],
         initial_height: int,
+        position_y: int,
+        fixed: bool,
         streaming: bool,
         stop_callback: Optional[Callable[[], None]],
         markdown_enabled: bool,
@@ -101,6 +103,8 @@ class ToastWindowBase(ABC):
             duration: 自动关闭时长（毫秒）
             initial_width: 初始宽度，0-1 为屏幕比例，>1 为像素值
             initial_height: 初始高度，0 表示自动计算
+            position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
+            fixed: 是否固定在 position_y，固定后不可拖动改变位置
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown_enabled: 是否启用 Markdown 渲染
@@ -115,6 +119,8 @@ class ToastWindowBase(ABC):
         self.duration = duration
         self.initial_width = initial_width
         self.initial_height = initial_height
+        self.position_y = position_y
+        self.fixed = fixed
         
         # 状态标志
         self.pause = False
@@ -180,6 +186,13 @@ class ToastWindowBase(ABC):
             # 绝对值（像素）
             return int(self.initial_width)
 
+    def _calculate_position_y(self, screen_height: int, window_height: int) -> int:
+        """计算 Toast 的屏幕 y 坐标。"""
+        if self.position_y >= 0:
+            max_y = max(screen_height - int(window_height), 0)
+            return max(0, min(int(self.position_y), max_y))
+        return screen_height // 2
+
     @staticmethod
     def _invert_color(hex_color: str) -> str:
         """计算十六进制颜色的反色
@@ -221,16 +234,22 @@ class ToastWindowBase(ABC):
 
     def _on_drag_start(self, event: tk.Event) -> None:
         """拖动开始"""
+        if self.fixed:
+            return
         self.pause = True
         self.x = event.x
         self.y = event.y
 
     def _on_drag_stop(self, event: tk.Event) -> None:
         """拖动结束"""
+        if self.fixed:
+            return
         self.pause = False
 
     def _on_drag_motion(self, event: tk.Event) -> None:
         """拖动中，更新窗口位置"""
+        if self.fixed:
+            return
         deltax = event.x - self.x
         deltay = event.y - self.y
         x = self.window.winfo_x() + deltax
@@ -476,6 +495,8 @@ class ToastWindowBase(ABC):
             margin_coefficient = self._calculate_height_coefficient(content_height)
             final_h = max(int(content_height * margin_coefficient), MARKDOWN_MIN_HEIGHT)
             final_w = self._calculate_actual_width()
+            if self.fixed:
+                cy = self._calculate_position_y(self.window.winfo_screenheight(), final_h)
 
             self.window.geometry(f"{final_w}x{int(final_h)}+{cx}+{cy}")
 

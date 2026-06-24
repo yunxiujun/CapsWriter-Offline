@@ -47,6 +47,8 @@ class ToastWindowLabel(ToastWindowBase):
         duration: int = 3000,
         initial_width: Union[float, int] = 400,
         initial_height: int = 0,
+        position_y: int = -1,
+        fixed: bool = False,
         streaming: bool = False,
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
@@ -64,6 +66,8 @@ class ToastWindowLabel(ToastWindowBase):
             duration: 自动关闭时长（毫秒）
             initial_width: 初始宽度，0-1 为屏幕比例，>1 为像素值
             initial_height: 初始高度，0 表示自动计算
+            position_y: 窗口初始屏幕高度/y 坐标，-1 表示屏幕中间
+            fixed: 是否固定在 position_y，固定后不可拖动改变位置
             streaming: 是否为流式输出模式
             stop_callback: 窗口关闭时的回调函数
             markdown: 是否启用 Markdown 渲染
@@ -72,7 +76,7 @@ class ToastWindowLabel(ToastWindowBase):
         # 初始化基类
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
-            duration, initial_width, initial_height, streaming,
+            duration, initial_width, initial_height, position_y, fixed, streaming,
             stop_callback, markdown, editable
         )
 
@@ -153,11 +157,11 @@ class ToastWindowLabel(ToastWindowBase):
             if initial:
                 # 初始位置：水平居中，顶部在屏幕中间
                 x = (screen_width - window_width) // 2
-                y = screen_height // 2
+                y = self._calculate_position_y(screen_height, window_height)
             else:
                 # 保持当前位置，只更新大小
                 x = self.window.winfo_x()
-                y = self.window.winfo_y()
+                y = self._calculate_position_y(screen_height, window_height) if self.fixed else self.window.winfo_y()
 
             self.window.geometry(f'{window_width}x{window_height}+{x}+{y}')
         except tk.TclError as e:
