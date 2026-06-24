@@ -148,6 +148,16 @@ class ToastWindowBase(ABC):
         self.window.configure(bg=bg)
         self.window.resizable(True, True)
         self.window.pack_propagate(False)
+
+        self.container = tk.Frame(self.window, bg=bg, borderwidth=0, highlightthickness=0)
+        self.container.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        self.content_frame = tk.Frame(self.container, bg=bg, borderwidth=0, highlightthickness=0)
+        self.content_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.controls_frame = tk.Frame(self.container, bg=bg, borderwidth=0, highlightthickness=0)
+        self.controls_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        self._create_control_buttons()
         
         # 绑定通用事件
         self._bind_common_events()
@@ -158,6 +168,59 @@ class ToastWindowBase(ABC):
         # 如果不是流式模式，设置定时销毁
         if not self.streaming:
             self._start_destroy_timer()
+
+    def _create_control_buttons(self) -> None:
+        """创建右侧固定/取消固定控制按钮。"""
+        button_options = {
+            'width': 2,
+            'height': 1,
+            'font': (self.font_family, max(9, self.font_size - 3)),
+            'fg': self.fg,
+            'bg': self.bg,
+            'activeforeground': self.fg,
+            'activebackground': self.bg,
+            'relief': tk.FLAT,
+            'borderwidth': 0,
+            'highlightthickness': 0,
+            'cursor': 'hand2',
+            'takefocus': False,
+        }
+        self.pin_button = tk.Button(
+            self.controls_frame,
+            text='固',
+            command=self.pin_window,
+            **button_options
+        )
+        self.pin_button.pack(side=tk.TOP, padx=(0, 4), pady=(4, 1))
+        self.unpin_button = tk.Button(
+            self.controls_frame,
+            text='移',
+            command=self.unpin_window,
+            **button_options
+        )
+        self.unpin_button.pack(side=tk.TOP, padx=(0, 4), pady=(1, 4))
+
+    def pin_window(self) -> None:
+        """固定当前 Toast：锁住当前位置，并取消自动关闭。"""
+        try:
+            self.window.update_idletasks()
+            self.position_y = self.window.winfo_y()
+            self.fixed = True
+            self.pause = False
+            if self.timer_id:
+                self.window.after_cancel(self.timer_id)
+                self.timer_id = None
+        except tk.TclError as e:
+            logger.warning(f"固定 Toast 失败: {e}")
+
+    def unpin_window(self) -> None:
+        """取消固定：允许拖动，并恢复自动关闭计时。"""
+        try:
+            self.fixed = False
+            if not self.streaming and not self.mouse_inside:
+                self._start_destroy_timer()
+        except tk.TclError as e:
+            logger.warning(f"取消固定 Toast 失败: {e}")
 
     def _bind_common_events(self) -> None:
         """绑定通用事件（拖动、鼠标进入/离开、滚轮、ESC、复制）"""
@@ -229,7 +292,7 @@ class ToastWindowBase(ABC):
     def _on_mouse_leave(self, event: tk.Event) -> None:
         """鼠标离开窗口，恢复自动关闭计时器"""
         self.mouse_inside = False
-        if not self.streaming:
+        if not self.streaming and not self.fixed:
             self._start_destroy_timer()
 
     def _on_drag_start(self, event: tk.Event) -> None:
@@ -355,6 +418,11 @@ class ToastWindowBase(ABC):
 
     def _start_destroy_timer(self) -> None:
         """启动自动销毁计时器"""
+        if self.fixed:
+            if self.timer_id:
+                self.window.after_cancel(self.timer_id)
+                self.timer_id = None
+            return
         if self.timer_id:
             self.window.after_cancel(self.timer_id)
         self.timer_id = self.window.after(self.duration, self._destroy_window)
@@ -366,6 +434,9 @@ class ToastWindowBase(ABC):
             event: 事件对象（ESC 键触发时传入）
         """
         try:
+            if self.fixed and event is None:
+                return
+
             # 调用停止回调（用于停止 LLM 输出）
             if self.stop_callback:
                 try:
@@ -441,7 +512,7 @@ class ToastWindowBase(ABC):
 
             # 先创建 HTMLLabel 组件，覆盖在原有组件上面
             self.md_label = HTMLLabel(
-                self.window,
+                self.content_frame,
                 html=full_html,
                 wrap="char",
                 background=self.bg,

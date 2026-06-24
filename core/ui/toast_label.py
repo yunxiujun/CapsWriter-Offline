@@ -94,7 +94,7 @@ class ToastWindowLabel(ToastWindowBase):
 
         # 创建文字标签
         self.label = tk.Label(
-            self.window,
+            self.content_frame,
             text=processed_text,
             font=(font_name, font_size),
             fg=fg,

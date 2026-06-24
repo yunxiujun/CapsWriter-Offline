@@ -92,7 +92,7 @@ class ToastWindowText(ToastWindowBase):
         text_height = STREAMING_TEXT_HEIGHT if streaming else NON_STREAMING_TEXT_HEIGHT
         
         self.text_area = tk.Text(
-            self.window,
+            self.content_frame,
             font=self.my_font,
             fg=self.fg,
             bg=self.bg,
