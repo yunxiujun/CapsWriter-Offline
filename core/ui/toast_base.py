@@ -199,6 +199,23 @@ class ToastWindowBase(ABC):
             **button_options
         )
         self.unpin_button.pack(side=tk.TOP, padx=(0, 4), pady=(1, 4))
+        self._update_pin_button_state()
+
+    def _update_pin_button_state(self) -> None:
+        """同步固定/移动按钮的互斥高亮状态。"""
+        try:
+            active_bg = self.fg
+            active_fg = self.bg
+            normal_bg = self.bg
+            normal_fg = self.fg
+            if self.fixed:
+                self.pin_button.config(bg=active_bg, fg=active_fg, activebackground=active_bg, activeforeground=active_fg)
+                self.unpin_button.config(bg=normal_bg, fg=normal_fg, activebackground=normal_bg, activeforeground=normal_fg)
+            else:
+                self.pin_button.config(bg=normal_bg, fg=normal_fg, activebackground=normal_bg, activeforeground=normal_fg)
+                self.unpin_button.config(bg=active_bg, fg=active_fg, activebackground=active_bg, activeforeground=active_fg)
+        except tk.TclError:
+            pass
 
     def pin_window(self) -> None:
         """固定当前 Toast：锁住当前位置，并取消自动关闭。"""
@@ -207,6 +224,7 @@ class ToastWindowBase(ABC):
             self.position_y = self.window.winfo_y()
             self.fixed = True
             self.pause = False
+            self._update_pin_button_state()
             if self.timer_id:
                 self.window.after_cancel(self.timer_id)
                 self.timer_id = None
@@ -217,6 +235,7 @@ class ToastWindowBase(ABC):
         """取消固定：允许拖动，并恢复自动关闭计时。"""
         try:
             self.fixed = False
+            self._update_pin_button_state()
             if not self.streaming and not self.mouse_inside:
                 self._start_destroy_timer()
         except tk.TclError as e:
