@@ -22,6 +22,19 @@ def _all_numeric(tokens):
     return all(t.type in _BASIC_NUMERIC_TYPES for t in tokens)
 
 
+def _starts_with_bare_large_unit(text):
+    """裸万/亿开头的片段常是业务话术，不按数字短语转换。"""
+    if len(text) < 2 or text[0] not in ('万', '亿'):
+        return False
+
+    tokens = tokenize(text)
+    return (
+        len(tokens) >= 2
+        and tokens[0].type in ('TEN_THOUSAND', 'HUNDRED_MILLION')
+        and tokens[1].type in _BASIC_NUMERIC_TYPES
+    )
+
+
 def _reduce_binary_op(tokens, sep_type, fmt):
     """规约二元分隔表达式（分数、比值共用）"""
     indices = [i for i, t in enumerate(tokens) if t.type == sep_type]
@@ -262,6 +275,8 @@ def replace(match):
 
         if parsed_original == '一' and sign_prefix:
             final = sign_prefix + '1'
+        elif _starts_with_bare_large_unit(parsed_original):
+            final = original
         else:
             tokens = tokenize(parsed_original)
 
