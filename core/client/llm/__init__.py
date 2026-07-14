@@ -24,6 +24,7 @@ from .llm_client_pool import ClientPool
 from .llm_clipboard import copy_to_clipboard
 from .llm_get_selection import (
     get_selected_text,
+    get_clipboard_text,
     record_selection_usage
 )
 
@@ -52,6 +53,7 @@ __all__ = [
 
     # 剪贴板/选中文字
     'get_selected_text',
+    'get_clipboard_text',
     'record_selection_usage',
     'copy_to_clipboard',
 

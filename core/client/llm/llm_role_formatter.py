@@ -72,6 +72,10 @@ class RoleFormatter:
         # 读取选中文字
         read_selection = role_config.enable_read_selection
         text.append("读选区 " if read_selection else "读选区 ", style="green" if read_selection else "dim")
+
+        # 按语音关键词读取剪贴板
+        read_clipboard = role_config.enable_read_clipboard
+        text.append("读剪板 " if read_clipboard else "读剪板 ", style="green" if read_clipboard else "dim")
         
 
         # 模型信息

@@ -23,6 +23,7 @@ aa47cce Highlight Toast pin state
 39af546 Add Toast pin controls
 7e3814c Add Toast fixed position options
 3e166a3 Add xAI Responses API support
+fab441c Preserve bare large-unit phrases in ITN
 ```
 
 ## 已完成的功能
@@ -43,6 +44,13 @@ aa47cce Highlight Toast pin state
    - Toast 右侧有 `固`、`移`、`消/留` 按钮。
    - `固/移` 和 `消/留` 的选择保存在运行目录 `.toast_state.json`。
    - `.toast_state.json` 不提交。
+
+3. LLM 选区与剪贴板上下文
+   - 浏览器整页选区不再只固定等待 0.1 秒；现在用唯一剪贴板标记并轮询等待。
+   - 修复选中文字与原剪贴板内容相同时被误判为无选区。
+   - 非默认角色唤醒后，语音包含 `剪贴板/剪切板/剪贴版/剪切版` 时，
+     直接读取当前剪贴板文字，优先于模拟 `Ctrl+C` 的选区读取。
+   - 运行目录所有角色都保留可调整的注释配置，默认上限为 20000 字符。
 
 ## 重要边界
 
@@ -99,6 +107,10 @@ $files = @(
   'core\client\llm\llm_client_pool.py',
   'core\client\llm\llm_processor.py',
   'core\client\llm\llm_role_config.py',
+  'core\client\llm\llm_get_selection.py',
+  'core\client\llm\llm_handler.py',
+  'core\client\llm\llm_message_builder.py',
+  'core\client\llm\llm_role_formatter.py',
   'core\client\llm\llm_output_toast.py',
   'core\ui\toast_manager.py',
   'core\ui\toast.py',

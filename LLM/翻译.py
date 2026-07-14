@@ -20,7 +20,11 @@ enable_hotwords = False                 # 是否启用热词
 enable_thinking = False                 # 是否启用思考（仅 Ollama）
 enable_history = True                  # 是否保留对话历史
 enable_read_selection = True            # 是否启用获取选中文字（通过 Ctrl+C）
-selection_max_length = 2048             # 选中文字最大长度
+selection_max_length = 20000            # 选中文字最大长度
+# selection_copy_timeout = 0.8          # 可选：等待 Ctrl+C 复制整页完成的最长时间（秒）
+# enable_read_clipboard = True          # 可选：唤醒后说出关键词时直接读取剪贴板
+# clipboard_keywords = ('剪贴板', '剪切板', '剪贴版', '剪切版')
+# clipboard_max_length = 20000          # 可选：剪贴板内容最大长度
 
 # ==================== 输出配置 ====================
 output_mode = 'toast'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口
@@ -47,6 +51,7 @@ extra_options = {}                      # 额外的 API 参数（JSON 格式）
 # ==================== 提示词前缀 ====================
 prompt_prefix_hotwords = '热词列表：'    # 热词列表前缀
 prompt_prefix_selection = '选中文字：'   # 选中文字前缀
+# prompt_prefix_clipboard = '剪贴板内容：' # 可选：剪贴板内容前缀
 prompt_prefix_input = '用户输入：'       # 用户输入前缀
 
 # ==================== System Prompt ====================

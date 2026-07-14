@@ -37,7 +37,8 @@ class MessageBuilder:
         context_manager: Any = None,
         image_data: Optional[str] = None,
         hotwords: Optional[List[Tuple[str, float]]] = None,
-        selection_text: str = ""
+        selection_text: str = "",
+        clipboard_text: str = "",
     ) -> List[Dict]:
         """
         构建 LLM 请求消息
@@ -49,6 +50,7 @@ class MessageBuilder:
             image_data: 图片数据（base64 编码）
             hotwords: 匹配的热词列表 [(热词, 分数), ...]
             selection_text: 用户选中的文字
+            clipboard_text: 由语音关键词触发读取的剪贴板文字
 
         Returns:
             完整的消息列表
@@ -90,6 +92,11 @@ class MessageBuilder:
         if selection_text:
              context_parts.append(f"{role_config.prompt_prefix_selection}{selection_text}")
              logger.debug(f"[消息构建] 已添加选中文字")
+
+        # 3.3 剪贴板文字
+        if clipboard_text:
+             context_parts.append(f"{role_config.prompt_prefix_clipboard}{clipboard_text}")
+             logger.debug(f"[消息构建] 已添加剪贴板文字")
 
         # 3.4 最终组装
         context_str = "\n\n".join(context_parts)

@@ -19,7 +19,11 @@ from .llm_client_pool import ClientPool
 from .llm_message_builder import MessageBuilder
 from .llm_role_detector import RoleDetector
 from .llm_processor import LLMProcessor
-from .llm_get_selection import get_selected_text, record_selection_usage
+from .llm_get_selection import (
+    get_selected_text,
+    get_clipboard_text,
+    record_selection_usage,
+)
 from . import logger
 from .llm_stop_monitor import StopMonitor
 from core.client.udp.udp_broadcaster import broadcast_output_udp
@@ -169,14 +173,16 @@ class LLMHandler:
         if context_manager:
             logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
         
-        # 获取选中文字（如果启用）
-        selection_text = get_selected_text(role_config, self.app.state)
+        # 明确说出剪贴板关键词时优先读取剪贴板，不再模拟 Ctrl+C 覆盖它
+        clipboard_text = get_clipboard_text(role_config, content)
+        selection_text = "" if clipboard_text else get_selected_text(role_config, self.app.state)
         
         # 构建消息
         messages = self.message_builder.build_messages(
             role_config, content, context_manager,
             hotwords=matched_hotwords,
-            selection_text=selection_text
+            selection_text=selection_text,
+            clipboard_text=clipboard_text,
         )
         
         # 使用 LLM 处理引擎执行请求
@@ -302,5 +308,4 @@ if __name__ == "__main__":
             handler.stop()
 
     asyncio.run(run_test_cases())
-
 

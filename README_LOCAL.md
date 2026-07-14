@@ -26,6 +26,10 @@
   - `消/留`：切换自动消失或保留到 `ESC`。
 - `固/移` 和 `消/留` 会保存到运行目录的 `.toast_state.json`，重启后仍保留。
 - `.toast_state.json` 已加入 `.gitignore`，不会提交。
+- LLM 读取选区改为唯一标记加轮询等待，改善浏览器 `Ctrl+A` 整页复制较慢、
+  或选中文字与原剪贴板内容相同时误判为空的问题。
+- 命中非默认角色唤醒词后，语音里出现 `剪贴板`、`剪切板`、`剪贴版`、
+  `剪切版` 时，会直接把当前剪贴板文字加入 LLM 上下文。
 
 ## 角色文件里的本地配置
 
@@ -38,6 +42,20 @@
 需要某个角色固定初始高度位置时，只删除这一行前面的 `#`。
 
 固定/移动、自动消失/保留不要再写进 `LLM\*.py`，在 Toast 浮动窗口右侧按钮里设置即可。
+
+剪贴板关键词功能默认启用。使用时先把正文复制到剪贴板，例如先按
+`Ctrl+A`、`Ctrl+C`，再说“联网助理，根据剪贴板内容总结这篇文章”。
+如果只选中文字、不说剪贴板关键词，程序仍会自动模拟 `Ctrl+C` 获取选区。
+
+每个角色可以取消注释并单独调整：
+
+```python
+# selection_copy_timeout = 0.8
+# enable_read_clipboard = True
+# clipboard_keywords = ('剪贴板', '剪切板', '剪贴版', '剪切版')
+# clipboard_max_length = 20000
+# prompt_prefix_clipboard = '剪贴板内容：'
+```
 
 ## 官方更新后怎么合流
 
@@ -72,6 +90,10 @@ core/client/llm/llm_constants.py
 core/client/llm/llm_client_pool.py
 core/client/llm/llm_processor.py
 core/client/llm/llm_role_config.py
+core/client/llm/llm_get_selection.py
+core/client/llm/llm_handler.py
+core/client/llm/llm_message_builder.py
+core/client/llm/llm_role_formatter.py
 core/client/llm/llm_output_toast.py
 core/ui/toast_manager.py
 core/ui/toast.py
@@ -108,6 +130,10 @@ $files = @(
   'core\client\llm\llm_client_pool.py',
   'core\client\llm\llm_processor.py',
   'core\client\llm\llm_role_config.py',
+  'core\client\llm\llm_get_selection.py',
+  'core\client\llm\llm_handler.py',
+  'core\client\llm\llm_message_builder.py',
+  'core\client\llm\llm_role_formatter.py',
   'core\client\llm\llm_output_toast.py',
   'core\ui\toast_manager.py',
   'core\ui\toast.py',

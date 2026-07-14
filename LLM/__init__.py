@@ -29,7 +29,11 @@ enable_thinking: bool = False                # 是否启用思考（仅 Ollama �
 enable_history: bool = False                 # 是否保留对话历史
 enable_hotwords: bool = False                # 是否读取潜在热词列表
 enable_read_selection: bool = False          # 是否读取鼠标所选文字（通过 Ctrl+C）
-selection_max_length: int = 1000             # 选中文字最大长度
+selection_max_length: int = 20000            # 选中文字最大长度
+selection_copy_timeout: float = 0.8          # 等待 Ctrl+C 复制完成的最长时间（秒）
+enable_read_clipboard: bool = True           # 唤醒后说出关键词时直接读取剪贴板
+clipboard_keywords = ('剪贴板', '剪切板', '剪贴版', '剪切版')
+clipboard_max_length: int = 20000            # 剪贴板内容最大长度
 
 # 输出配置
 output_mode: str = 'typing'                  # 输出方式: 'typing' 或 'toast' (即打字输出或弹窗输出)
@@ -57,6 +61,7 @@ extra_options: Dict[str, Any] = field(default_factory=dict)  # 额外的 API 参
 # 提示词前缀
 prompt_prefix_hotwords: str = '热词列表：'      # 热词列表前缀
 prompt_prefix_selection: str = '选中文字：'     # 选中文字前缀
+prompt_prefix_clipboard: str = '剪贴板内容：'    # 剪贴板内容前缀
 prompt_prefix_input: str = '用户输入：'         # 用户输入前缀
 
 # System Prompt
