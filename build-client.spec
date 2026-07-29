@@ -78,6 +78,12 @@ hiddenimports += [
     'rich._unicode_data.unicode17-0-0',
 ]
 
+try:
+    hiddenimports += collect_submodules('pycaw')
+    hiddenimports += collect_submodules('comtypes')
+except Exception as e:
+    print(f"[WARNING] 收集 Windows 音频控制依赖失败: {e}")
+
 a_2 = Analysis(
     ['start_client.py'],
     pathex=[],

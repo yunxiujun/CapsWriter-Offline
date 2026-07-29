@@ -30,6 +30,8 @@
   或选中文字与原剪贴板内容相同时误判为空的问题。
 - 命中非默认角色唤醒词后，语音里出现 `剪贴板`、`剪切板`、`剪贴版`、
   `剪切版` 时，会直接把当前剪贴板文字加入 LLM 上下文。
+- 按住识别快捷键录音时，可临时静音 Windows 默认输出设备；录音完成、取消或
+  客户端退出时恢复录音前的静音状态。
 
 ## 角色文件里的本地配置
 
@@ -56,6 +58,15 @@
 # clipboard_max_length = 20000
 # prompt_prefix_clipboard = '剪贴板内容：'
 ```
+
+录音时静音是客户端全局功能，在 `config_client.py` 中调整：
+
+```python
+mute_system_audio_while_recording = True  # False 表示关闭
+mute_restore_delay = 0.08                 # 停止录音后恢复声音的延迟（秒）
+```
+
+该功能只切换静音状态，不修改音量数值。电脑原本已静音时，录音结束后仍保持静音。
 
 ## 官方更新后怎么合流
 
@@ -95,6 +106,10 @@ core/client/llm/llm_handler.py
 core/client/llm/llm_message_builder.py
 core/client/llm/llm_role_formatter.py
 core/client/llm/llm_output_toast.py
+core/client/audio/system_audio_mute.py
+core/client/shortcut/task.py
+core/client/app.py
+config_client.py
 core/ui/toast_manager.py
 core/ui/toast.py
 core/ui/toast_base.py
@@ -135,6 +150,9 @@ $files = @(
   'core\client\llm\llm_message_builder.py',
   'core\client\llm\llm_role_formatter.py',
   'core\client\llm\llm_output_toast.py',
+  'core\client\audio\system_audio_mute.py',
+  'core\client\shortcut\task.py',
+  'core\client\app.py',
   'core\ui\toast_manager.py',
   'core\ui\toast.py',
   'core\ui\toast_base.py',

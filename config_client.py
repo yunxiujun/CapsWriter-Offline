@@ -34,6 +34,9 @@ class ClientConfig:
 
     threshold    = 0.3          # 快捷键触发阈值（秒）
 
+    mute_system_audio_while_recording = True  # 录音期间临时静音 Windows 默认输出设备
+    mute_restore_delay = 0.08                 # 停止录音后恢复原静音状态的延迟（秒）
+
     paste        = False        # 是否以写入剪切板然后模拟 Ctrl-V 粘贴的方式输出结果
     restore_clip = True         # 模拟粘贴后是否恢复剪贴板
     paste_apps   = ['WeiXin.exe', 'Telegram.exe']  # 匹配时强制粘贴
@@ -130,4 +133,3 @@ r"""
   {'key': 'f12', 'type': 'keyboard', 'suppress': True, 'hold_mode': True, 'enabled': True}, 
   {'key': 'x2', 'type': 'mouse', 'suppress': True, 'hold_mode': True, 'enabled': True}, 
 """
-

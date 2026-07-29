@@ -46,6 +46,7 @@ class ShortcutTask:
         self.task: Optional[asyncio.Future] = None
         self.recording_start_time: float = 0.0
         self.is_recording: bool = False
+        self._system_audio_mute_acquired: bool = False
 
         # hold_mode 状态跟踪
         self.pressed: bool = False
@@ -74,56 +75,70 @@ class ShortcutTask:
         """启动录音任务"""
         logger.info(f"[{self.shortcut.key}] 触发：开始录音")
 
-        # 记录开始时间
-        self.recording_start_time = time.time()
-        self.is_recording = True
+        mute_controller = getattr(self.app, 'system_audio_mute', None)
+        if mute_controller is not None:
+            self._system_audio_mute_acquired = mute_controller.acquire()
 
-        # 将开始标志放入队列
-        asyncio.run_coroutine_threadsafe(
-            self.state.queue_in.put({'type': 'begin', 'time': self.recording_start_time, 'data': None}),
-            self.app.loop
-        )
+        try:
+            # 记录开始时间
+            self.recording_start_time = time.time()
+            self.is_recording = True
 
-        # 更新录音状态
-        self.state.start_recording(self.recording_start_time)
+            # 将开始标志放入队列
+            asyncio.run_coroutine_threadsafe(
+                self.state.queue_in.put({'type': 'begin', 'time': self.recording_start_time, 'data': None}),
+                self.app.loop
+            )
 
-        # 打印动画：正在录音
-        self._status.start()
+            # 更新录音状态
+            self.state.start_recording(self.recording_start_time)
 
-        # 启动识别任务
-        recorder = self._get_recorder()
-        self.task = asyncio.run_coroutine_threadsafe(
-            recorder.record_and_send(),
-            self.app.loop,
-        )
+            # 打印动画：正在录音
+            self._status.start()
+
+            # 启动识别任务
+            recorder = self._get_recorder()
+            self.task = asyncio.run_coroutine_threadsafe(
+                recorder.record_and_send(),
+                self.app.loop,
+            )
+        except Exception:
+            self._release_system_audio_mute()
+            raise
 
     def cancel(self) -> None:
         """取消录音任务（时间过短）"""
         logger.debug(f"[{self.shortcut.key}] 取消录音任务（时间过短）")
 
-        self.is_recording = False
-        self.state.stop_recording()
-        self._status.stop()
+        try:
+            self.is_recording = False
+            self.state.stop_recording()
+            self._status.stop()
 
-        self.task.cancel()
-        self.task = None
+            self.task.cancel()
+            self.task = None
+        finally:
+            self._release_system_audio_mute()
 
     def finish(self) -> None:
         """完成录音任务"""
         logger.info(f"[{self.shortcut.key}] 释放：完成录音")
 
-        self.is_recording = False
-        self.state.stop_recording()
-        self._status.stop()
+        try:
+            self.is_recording = False
+            self.state.stop_recording()
+            self._status.stop()
 
-        asyncio.run_coroutine_threadsafe(
-            self.state.queue_in.put({
-                'type': 'finish',
-                'time': time.time(),
-                'data': None
-            }),
-            self.app.loop
-        )
+            asyncio.run_coroutine_threadsafe(
+                self.state.queue_in.put({
+                    'type': 'finish',
+                    'time': time.time(),
+                    'data': None
+                }),
+                self.app.loop
+            )
+        finally:
+            self._release_system_audio_mute()
 
         # 执行 restore（可恢复按键 + 非阻塞模式）
         # 阻塞模式下按键不会发送到系统，状态不会改变，不需要恢复
@@ -140,3 +155,13 @@ class ShortcutTask:
             manager.schedule_restore(self.shortcut.key)
         else:
             logger.warning(f"[{self.shortcut.key}] manager 引用丢失，无法 restore")
+
+    def _release_system_audio_mute(self) -> None:
+        """Release this task's shared mute lease exactly once."""
+        if not self._system_audio_mute_acquired:
+            return
+
+        self._system_audio_mute_acquired = False
+        mute_controller = getattr(self.app, 'system_audio_mute', None)
+        if mute_controller is not None:
+            mute_controller.release()

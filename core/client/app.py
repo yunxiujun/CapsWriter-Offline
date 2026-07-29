@@ -23,6 +23,7 @@ from .manager import (
     MicRunner, FileRunner
 )
 from .audio.stream import AudioStreamManager
+from .audio.system_audio_mute import SystemAudioMuteController
 from .shortcut.shortcut_manager import ShortcutManager
 from .shortcut.shortcut_config import Shortcut
 
@@ -74,6 +75,10 @@ class CapsWriterClient:
 
         # 实例化硬件资源管理组件
         self.stream = AudioStreamManager(self)
+        self.system_audio_mute = SystemAudioMuteController(
+            enabled=getattr(Config, 'mute_system_audio_while_recording', False),
+            restore_delay=getattr(Config, 'mute_restore_delay', 0.08),
+        )
         self.shortcut = ShortcutManager(self, [Shortcut(**sc) for sc in Config.shortcuts])
         self.udp = UDPController(self.shortcut)
 
@@ -88,7 +93,10 @@ class CapsWriterClient:
 
         # 1. 停止核心运行组件
         self.udp.stop()
-        self.shortcut.stop()
+        try:
+            self.shortcut.stop()
+        finally:
+            self.system_audio_mute.restore_now()
         self.stream.stop()
 
         # 2. 托盘资源
@@ -137,5 +145,3 @@ class CapsWriterClient:
             self.loop.run_until_complete(runner.run())
         except RuntimeError:
             ...
-
-

@@ -77,6 +77,12 @@ hiddenimports += [
     'pystray',       # 托盘图标库
 ]
 
+try:
+    hiddenimports += collect_submodules('pycaw')
+    hiddenimports += collect_submodules('comtypes')
+except Exception as e:
+    print(f"[WARNING] 收集 Windows 音频控制依赖失败: {e}")
+
 # # 对所有模块用 .py 源码而非 .pyc（猴子补丁 _get_module_collection_mode）
 # import PyInstaller.building.build_main as _bm
 # _bm._get_module_collection_mode = lambda md, n, na=False: _bm._ModuleCollectionMode.PY

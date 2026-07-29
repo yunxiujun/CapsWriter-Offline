@@ -52,6 +52,13 @@ fab441c Preserve bare large-unit phrases in ITN
      直接读取当前剪贴板文字，优先于模拟 `Ctrl+C` 的选区读取。
    - 运行目录所有角色都保留可调整的注释配置，默认上限为 20000 字符。
 
+4. 录音期间静音系统输出
+   - `config_client.py` 中的 `mute_system_audio_while_recording` 是总开关。
+   - 按下识别快捷键后先保存 Windows 默认输出设备静音状态，再临时静音。
+   - 完成、取消、异常和客户端正常退出都会恢复录音前状态。
+   - 使用共享计数，两个录音入口重叠时不会提前恢复声音。
+   - 依赖 `pycaw==20251023` 和 `comtypes==1.4.16`。
+
 ## 重要边界
 
 - 维护目录是干净 Git 工作目录。
@@ -112,6 +119,9 @@ $files = @(
   'core\client\llm\llm_message_builder.py',
   'core\client\llm\llm_role_formatter.py',
   'core\client\llm\llm_output_toast.py',
+  'core\client\audio\system_audio_mute.py',
+  'core\client\shortcut\task.py',
+  'core\client\app.py',
   'core\ui\toast_manager.py',
   'core\ui\toast.py',
   'core\ui\toast_base.py',
