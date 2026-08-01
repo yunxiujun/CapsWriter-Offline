@@ -76,6 +76,10 @@ class RoleFormatter:
         # 按语音关键词读取剪贴板
         read_clipboard = role_config.enable_read_clipboard
         text.append("读剪板 " if read_clipboard else "读剪板 ", style="green" if read_clipboard else "dim")
+
+        # 本地知识库
+        knowledge_base = role_config.enable_knowledge_base
+        text.append("知识库 " if knowledge_base else "知识库 ", style="green" if knowledge_base else "dim")
         
 
         # 模型信息

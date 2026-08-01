@@ -39,6 +39,7 @@ class MessageBuilder:
         hotwords: Optional[List[Tuple[str, float]]] = None,
         selection_text: str = "",
         clipboard_text: str = "",
+        knowledge_base_text: str = "",
     ) -> List[Dict]:
         """
         构建 LLM 请求消息
@@ -51,6 +52,7 @@ class MessageBuilder:
             hotwords: 匹配的热词列表 [(热词, 分数), ...]
             selection_text: 用户选中的文字
             clipboard_text: 由语音关键词触发读取的剪贴板文字
+            knowledge_base_text: 当前角色本地知识库检索结果
 
         Returns:
             完整的消息列表
@@ -64,6 +66,17 @@ class MessageBuilder:
                 "content": role_config.system_prompt
             })
 
+        if role_config.enable_knowledge_base:
+            messages.append({
+                "role": "system",
+                "content": (
+                    "你正在使用封闭的本地知识库。回答中的事实只能来自本次提供的知识库资料，"
+                    "不得使用模型自身知识、常识、猜测、选中文字或剪贴板补充事实。"
+                    "资料不足时必须明确回答：知识库中没有找到相关信息。"
+                    "引用结论时尽量注明来源文件名。"
+                )
+            })
+
         # 2. 对话历史
         if context_manager:
             if hasattr(context_manager, 'history') and isinstance(context_manager.history, list):
@@ -75,7 +88,7 @@ class MessageBuilder:
         context_parts = []
 
         # 3.1 热词列表
-        if role_config.enable_hotwords and hotwords:
+        if role_config.enable_hotwords and hotwords and not role_config.enable_knowledge_base:
             try:
                 # hotwords 结构为 [(source, match, score), ...]
                 words = [item[1] for item in hotwords]
@@ -89,16 +102,21 @@ class MessageBuilder:
                 raise
 
         # 3.2 选中文字
-        if selection_text:
+        if selection_text and not role_config.enable_knowledge_base:
              context_parts.append(f"{role_config.prompt_prefix_selection}{selection_text}")
              logger.debug(f"[消息构建] 已添加选中文字")
 
         # 3.3 剪贴板文字
-        if clipboard_text:
+        if clipboard_text and not role_config.enable_knowledge_base:
              context_parts.append(f"{role_config.prompt_prefix_clipboard}{clipboard_text}")
              logger.debug(f"[消息构建] 已添加剪贴板文字")
 
-        # 3.4 最终组装
+        # 3.4 本地知识库。开启后它是唯一事实来源。
+        if role_config.enable_knowledge_base:
+             context_parts.append(f"{role_config.prompt_prefix_knowledge_base}\n{knowledge_base_text}")
+             logger.debug(f"[消息构建] 已添加本地知识库资料")
+
+        # 3.5 最终组装
         context_str = "\n\n".join(context_parts)
         context_str = context_str + "\n\n" if context_str else ""
 

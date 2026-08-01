@@ -34,6 +34,12 @@ selection_copy_timeout: float = 0.8          # 等待 Ctrl+C 复制完成的最�
 enable_read_clipboard: bool = True           # 唤醒后说出关键词时直接读取剪贴板
 clipboard_keywords = ('剪贴板', '剪切板', '剪贴版', '剪切版')
 clipboard_max_length: int = 20000            # 剪贴板内容最大长度
+enable_knowledge_base: bool = False          # 是否启用同名本地知识库
+knowledge_base_folder: str = ''              # 空值使用 LLM知识库/<角色主名称>
+knowledge_base_top_k: int = 8                # 大型知识库最多检索片段数
+knowledge_base_max_chars: int = 50000        # 单次最多注入知识库字符数
+knowledge_base_evidence_max_chars: int = 12000  # 回答后最多附加的相关原文字符数
+knowledge_base_evidence_top_k: int = 3       # 回答后最多附加的相关原文段落数
 
 # 输出配置
 output_mode: str = 'typing'                  # 输出方式: 'typing' 或 'toast' (即打字输出或弹窗输出)

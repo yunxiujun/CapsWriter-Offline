@@ -1,5 +1,15 @@
 # Handoff: CapsWriter-Offline 本地 fork
 
+## 角色本地知识库
+
+- 核心实现：`core/client/llm/llm_knowledge_base.py`。
+- 运行资料：`LLM知识库/<角色主名称>`，整个目录已被 Git 忽略。
+- 角色开关：`enable_knowledge_base`，`RoleConfig` 默认值为 `False`。
+- 支持 `.txt`、`.md`、`.markdown`，不包含 OCR 或图片读取。
+- 知识库模式跳过选区和剪贴板，只注入本地检索资料，并追加严格来源约束。
+- `format_evidence_appendix()` 在模型回答后直接附加本地命中原文，不能改成让模型复述。
+- 用户知识文件和运行角色 API Key 都不得进入 GitHub 或 Release。
+
 ## 目标
 
 维护用户自己的 CapsWriter-Offline 改造版，同时后续可以继续合并官方 `HaujetZhao/CapsWriter-Offline` 的更新。

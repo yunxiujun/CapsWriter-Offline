@@ -19,6 +19,7 @@ from .llm_client_pool import ClientPool
 from .llm_message_builder import MessageBuilder
 from .llm_role_detector import RoleDetector
 from .llm_processor import LLMProcessor
+from .llm_knowledge_base import KnowledgeBaseRetriever, format_evidence_appendix
 from .llm_get_selection import (
     get_selected_text,
     get_clipboard_text,
@@ -68,6 +69,7 @@ class LLMHandler:
 
         # 消息构建器
         self.message_builder = MessageBuilder(app)
+        self.knowledge_base = KnowledgeBaseRetriever()
 
         # 角色检测器
         self.role_detector = RoleDetector(self.role_loader)
@@ -107,6 +109,7 @@ class LLMHandler:
     def reload_roles(self):
         """重新加载所有角色（保留历史记录）"""
         logger.info("重新加载角色配置")
+        old_roles = self.roles.copy()
         # 保存旧的历史记录
         old_contexts = {}
         for role_name, ctx in self.context_managers.items():
@@ -126,6 +129,15 @@ class LLMHandler:
         # 恢复历史记录
         for role_name, ctx in self.context_managers.items():
             if role_name in old_contexts:
+                old_role = old_roles.get(role_name)
+                new_role = self.roles.get(role_name)
+                if (
+                    old_role
+                    and new_role
+                    and old_role.enable_knowledge_base != new_role.enable_knowledge_base
+                ):
+                    logger.info("角色 '%s' 切换知识库状态，已清除旧历史", role_name)
+                    continue
                 ctx.history = old_contexts[role_name]['history']
                 ctx.last_interaction = old_contexts[role_name]['last_interaction']
                 logger.debug(f"恢复角色 '{role_name}' 的历史记录: {len(ctx.history)} 条")
@@ -173,9 +185,15 @@ class LLMHandler:
         if context_manager:
             logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
         
-        # 明确说出剪贴板关键词时优先读取剪贴板，不再模拟 Ctrl+C 覆盖它
-        clipboard_text = get_clipboard_text(role_config, content)
-        selection_text = "" if clipboard_text else get_selected_text(role_config, self.app.state)
+        # 知识库模式只允许本地资料作为事实来源，不读取选区或剪贴板。
+        if role_config.enable_knowledge_base:
+            clipboard_text = ""
+            selection_text = ""
+        else:
+            # 明确说出剪贴板关键词时优先读取剪贴板，不再模拟 Ctrl+C 覆盖它
+            clipboard_text = get_clipboard_text(role_config, content)
+            selection_text = "" if clipboard_text else get_selected_text(role_config, self.app.state)
+        knowledge_result = self.knowledge_base.retrieve(role_config, content)
         
         # 构建消息
         messages = self.message_builder.build_messages(
@@ -183,6 +201,7 @@ class LLMHandler:
             hotwords=matched_hotwords,
             selection_text=selection_text,
             clipboard_text=clipboard_text,
+            knowledge_base_text=knowledge_result.content,
         )
         
         # 使用 LLM 处理引擎执行请求
@@ -193,6 +212,13 @@ class LLMHandler:
             should_stop_check=should_stop_check,
             context_manager=context_manager
         )
+
+        # 原文附录由本地程序直接拼接，不经过模型，避免改写或概括。
+        if role_config.enable_knowledge_base and knowledge_result.evidence:
+            evidence_appendix = format_evidence_appendix(knowledge_result.evidence)
+            if callback:
+                callback(evidence_appendix)
+            result_text = f"{result_text}{evidence_appendix}"
 
         # 记录选中文字的使用（用于下一轮判断是否重复）
         record_selection_usage(role_config, selection_text)
@@ -308,4 +334,3 @@ if __name__ == "__main__":
             handler.stop()
 
     asyncio.run(run_test_cases())
-

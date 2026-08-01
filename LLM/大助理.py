@@ -25,6 +25,10 @@ selection_max_length = 20000            # 选中文字最大长度
 # enable_read_clipboard = True          # 可选：唤醒后说出关键词时直接读取剪贴板
 # clipboard_keywords = ('剪贴板', '剪切板', '剪贴版', '剪切版')
 # clipboard_max_length = 20000          # 可选：剪贴板内容最大长度
+enable_knowledge_base = False           # 是否启用同名本地知识库（默认关闭）
+# knowledge_base_folder = ''            # 可选：留空使用 LLM知识库/<角色主名称>
+# knowledge_base_top_k = 8              # 可选：大型知识库最多检索片段数
+# knowledge_base_max_chars = 50000      # 可选：单次最多注入知识库字符数
 
 # ==================== 输出配置 ====================
 output_mode = 'toast'                   # 输出方式：'typing' 直接打字, 'toast' 浮动窗口

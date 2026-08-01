@@ -164,6 +164,7 @@ logs/
 *.exe
 *.log
 .toast_state.json
+LLM知识库/
 
 
 

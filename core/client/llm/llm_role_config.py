@@ -42,6 +42,14 @@ class RoleConfig:
         '剪贴板', '剪切板', '剪贴版', '剪切版'
     )
     clipboard_max_length: int = 20000             # 剪贴板内容最大长度
+    enable_knowledge_base: bool = False           # 是否启用角色同名本地知识库
+    knowledge_base_folder: str = ''               # 空值使用 LLM知识库/<角色主名称>
+    knowledge_base_top_k: int = 8                 # 大型知识库最多检索的相关片段数
+    knowledge_base_max_chars: int = 50000         # 单次请求最多注入的知识库字符数
+    knowledge_base_evidence_max_chars: int = 12000  # 回答后最多附加的相关原文字符数
+    knowledge_base_evidence_top_k: int = 3        # 回答后最多附加的相关原文段落数
+    knowledge_base_chunk_chars: int = 1600        # 单个检索片段的目标字符数
+    knowledge_base_max_file_bytes: int = 2097152  # 单个知识文件最大 2 MiB
 
     # 输出配置
     output_mode: str = 'typing'                   # 输出方式: 'typing' 或 'toast' (即打字输出或弹窗输出)
@@ -70,6 +78,7 @@ class RoleConfig:
     prompt_prefix_hotwords: str = '热词列表：'      # 热词列表前缀
     prompt_prefix_selection: str = '选中文字：'     # 选中文字前缀
     prompt_prefix_clipboard: str = '剪贴板内容：'    # 剪贴板内容前缀
+    prompt_prefix_knowledge_base: str = '本地知识库资料：'  # 知识库资料前缀
     prompt_prefix_input: str = '用户输入：'         # 用户输入前缀
 
     # System Prompt
