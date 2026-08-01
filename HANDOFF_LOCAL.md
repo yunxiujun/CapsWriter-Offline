@@ -13,6 +13,10 @@
 - 官方上游：`https://github.com/HaujetZhao/CapsWriter-Offline.git`
 - 官方默认分支：`master`
 - `upstream` push URL 已设为 `DISABLED`
+- 运行目录已于 2026-08-01 同步官方 `upstream/master` 提交 `7d7fac3`。
+- 同步采用本地优先策略：`core/tools/chinese_itn/replacer.py` 保留本地 ITN 规则，
+  `hot.txt` 和 `hot-rule.txt` 只增量加入黑名单说明与 `A.S.R -> ASR` 规则。
+- 升级前备份：`D:\AI\CapsWriter-Offline-backups\official-merge-20260801-144847`。
 
 最新本地功能提交：
 
@@ -64,6 +68,13 @@ fab441c Preserve bare large-unit phrases in ITN
    - 完成、取消、异常和客户端正常退出都会恢复录音前状态。
    - 使用共享计数，两个录音入口重叠时不会提前恢复声音。
    - 依赖 `pycaw==20251023` 和 `comtypes==1.4.16`。
+
+6. 官方 v2.6 后续修复已同步到运行目录
+   - 麦克风权限失败和模型目录错放会给出友好提示。
+   - 热词检索使用批量 FastRAG，支持黑名单与 Unicode 字母音素。
+   - 支持正负数、斤两、省略尾随单位及英文缩写去点。
+   - 回归验证：59 个实际热词加载成功，100 次检索约 36 ms；ITN、黑名单、
+     Unicode 热词、Qwen3-ASR 启动和 WebSocket 连接均通过。
 
 ## 重要边界
 
