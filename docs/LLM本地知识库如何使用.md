@@ -44,7 +44,8 @@ knowledge_base_folder = ''          # 留空使用同名文件夹，也可填写
 knowledge_base_top_k = 8            # 大型知识库最多检索多少个片段
 knowledge_base_max_chars = 50000    # 单次最多发送多少知识库字符
 knowledge_base_evidence_max_chars = 12000  # 回答后最多附加多少原文字符
-knowledge_base_evidence_top_k = 3     # 回答后最多附加多少个相关原文段落
+knowledge_base_evidence_top_k = 2     # 回答后最多附加多少个相关原文段落
+knowledge_base_evidence_score_ratio = 0.80  # 候选段落相对最高分的最低比例
 ```
 
 自定义绝对路径示例：
@@ -62,6 +63,7 @@ knowledge_base_folder = r'D:\我的资料\公司制度'
 - 支持 UTF-8、UTF-8 BOM 和 GB18030 编码。
 - 每段资料标注来源文件名，方便复核。
 - 模型回答后，CapsWriter 会直接附加命中的完整相关段落；这部分由本地程序读取，不经过模型改写。
+- `evidence_top_k` 是上限，不会强制凑满。第一名明显领先时只附加一段；候选分数接近时最多附加两段，并按相关度从高到低排列。
 
 ## 隐私与限制
 

@@ -68,6 +68,7 @@ class KnowledgeBaseRetrieverTests(unittest.TestCase):
             "knowledge_base_max_chars": 50000,
             "knowledge_base_chunk_chars": 300,
             "knowledge_base_evidence_top_k": 2,
+            "knowledge_base_evidence_score_ratio": 0.80,
         }
         values.update(changes)
         return RoleConfig(**values)
@@ -135,6 +136,51 @@ class KnowledgeBaseRetrieverTests(unittest.TestCase):
         appendix = format_evidence_appendix(result.evidence)
         self.assertIn("未经模型修改", appendix)
         self.assertIn(paragraph, appendix)
+
+    def test_evidence_does_not_fill_top_k_with_weak_matches(self):
+        (self.folder / "模型.md").write_text(
+            "### BetterAnimeStyle\n触发词：anime screencap\n权重：1\n\n"
+            "### Watercolor\n触发词：watercolor style\n权重：0.8\n\n"
+            "### Sketch\n触发词：sketch style\n权重：0.9",
+            encoding="utf-8",
+        )
+        result = self.retriever.retrieve(
+            self.role(knowledge_base_evidence_top_k=3),
+            "BetterAnimeStyle 的触发词和权重",
+        )
+        self.assertIn("BetterAnimeStyle", result.evidence)
+        self.assertNotIn("Watercolor", result.evidence)
+        self.assertNotIn("Sketch", result.evidence)
+
+    def test_evidence_keeps_multiple_close_candidates(self):
+        (self.folder / "版本.md").write_text(
+            "### Aurora V1\n用途：旧版本\n\n"
+            "### Aurora V2\n用途：新版本",
+            encoding="utf-8",
+        )
+        result = self.retriever.retrieve(
+            self.role(knowledge_base_evidence_top_k=3),
+            "Aurora 是什么",
+        )
+        self.assertIn("Aurora V1", result.evidence)
+        self.assertIn("Aurora V2", result.evidence)
+
+    def test_specific_alias_ranks_first_and_suppresses_generic_matches(self):
+        (self.folder / "风格.md").write_text(
+            "### BetterAnimeStyle\n相关名称：更好的动漫、动画截图风格\n触发词：anime screencap\n\n"
+            "### Krea2-gpt anime render\n相关名称：GPT 动漫渲染、gpt anime render style、gpt风格漫画动画\n"
+            "触发词：gpt anime render style\n推荐权重：1\n\n"
+            "### Low Resolution Slider\n相关名称：真实感滑块\n功能：降低图片清晰度",
+            encoding="utf-8",
+        )
+        result = self.retriever.retrieve(
+            self.role(knowledge_base_evidence_top_k=2),
+            "GPT 风格漫画动画的触发词和权重",
+        )
+        self.assertIn("Krea2-gpt anime render", result.evidence)
+        self.assertNotIn("BetterAnimeStyle", result.evidence)
+        self.assertNotIn("Low Resolution Slider", result.evidence)
+        self.assertLess(result.evidence.index("Krea2-gpt anime render"), result.evidence.index("触发词"))
 
 
 class KnowledgeBaseMessageTests(unittest.TestCase):

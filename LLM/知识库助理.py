@@ -28,7 +28,8 @@ enable_knowledge_base = True            # 此角色默认启用知识库
 # knowledge_base_top_k = 8
 # knowledge_base_max_chars = 50000
 # knowledge_base_evidence_max_chars = 12000
-# knowledge_base_evidence_top_k = 3
+# knowledge_base_evidence_top_k = 2
+# knowledge_base_evidence_score_ratio = 0.80
 
 # ==================== 输出配置 ====================
 output_mode = 'toast'

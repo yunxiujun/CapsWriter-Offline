@@ -99,6 +99,7 @@ class KnowledgeBaseRetriever:
             entry.chunks,
             query,
             max(1, int(role_config.knowledge_base_evidence_top_k)),
+            max(0.0, min(1.0, float(role_config.knowledge_base_evidence_score_ratio))),
         )
         evidence, _ = self._format_chunks(
             evidence_candidates,
@@ -208,7 +209,13 @@ class KnowledgeBaseRetriever:
         return tokens
 
     @classmethod
-    def _search(cls, chunks: Sequence[KnowledgeChunk], query: str, top_k: int) -> List[KnowledgeChunk]:
+    def _search(
+        cls,
+        chunks: Sequence[KnowledgeChunk],
+        query: str,
+        top_k: int,
+        relative_score_ratio: float = 0.0,
+    ) -> List[KnowledgeChunk]:
         query_tokens = set(cls._tokenize(query))
         if not query_tokens:
             return list(chunks[:top_k])
@@ -219,9 +226,14 @@ class KnowledgeBaseRetriever:
             for token in query_tokens
         }
         total = len(chunks)
+        discriminative_tokens = {
+            token for token in query_tokens
+            if 0 < document_frequency[token] < total
+        }
+        scoring_tokens = discriminative_tokens or query_tokens
         scored = []
         for position, (chunk, tokens) in enumerate(zip(chunks, chunk_tokens)):
-            counts = {token: tokens.count(token) for token in query_tokens}
+            counts = {token: tokens.count(token) for token in scoring_tokens}
             score = sum(
                 (1.0 + math.log(count))
                 * (math.log((total + 1) / (document_frequency[token] + 1)) + 1.0)
@@ -235,6 +247,9 @@ class KnowledgeBaseRetriever:
         matched = [item for item in sorted(scored, reverse=True) if item[0] > 0]
         if not matched:
             return list(chunks[:top_k])
+        if relative_score_ratio > 0:
+            minimum_score = matched[0][0] * relative_score_ratio
+            matched = [item for item in matched if item[0] >= minimum_score]
         return [item[2] for item in matched[:top_k]]
 
     @staticmethod

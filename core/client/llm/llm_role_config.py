@@ -47,7 +47,8 @@ class RoleConfig:
     knowledge_base_top_k: int = 8                 # 大型知识库最多检索的相关片段数
     knowledge_base_max_chars: int = 50000         # 单次请求最多注入的知识库字符数
     knowledge_base_evidence_max_chars: int = 12000  # 回答后最多附加的相关原文字符数
-    knowledge_base_evidence_top_k: int = 3        # 回答后最多附加的相关原文段落数
+    knowledge_base_evidence_top_k: int = 2        # 回答后最多附加的相关原文段落数
+    knowledge_base_evidence_score_ratio: float = 0.80  # 附加段落相对最高分的最低比例
     knowledge_base_chunk_chars: int = 1600        # 单个检索片段的目标字符数
     knowledge_base_max_file_bytes: int = 2097152  # 单个知识文件最大 2 MiB
 

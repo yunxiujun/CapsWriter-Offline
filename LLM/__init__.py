@@ -39,7 +39,8 @@ knowledge_base_folder: str = ''              # 空值使用 LLM知识库/<角色
 knowledge_base_top_k: int = 8                # 大型知识库最多检索片段数
 knowledge_base_max_chars: int = 50000        # 单次最多注入知识库字符数
 knowledge_base_evidence_max_chars: int = 12000  # 回答后最多附加的相关原文字符数
-knowledge_base_evidence_top_k: int = 3       # 回答后最多附加的相关原文段落数
+knowledge_base_evidence_top_k: int = 2       # 回答后最多附加的相关原文段落数
+knowledge_base_evidence_score_ratio: float = 0.80  # 相对最高分低于此比例时不附加
 
 # 输出配置
 output_mode: str = 'typing'                  # 输出方式: 'typing' 或 'toast' (即打字输出或弹窗输出)
