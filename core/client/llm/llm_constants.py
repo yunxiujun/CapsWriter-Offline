@@ -63,6 +63,7 @@ class APIConfig:
         'volcengine': 'https://ark.cn-beijing.volces.com/api/v3',
         'cerebras': 'https://api.cerebras.ai/v1',
         'xai': 'https://api.x.ai/v1',
+        'minimax': 'https://api.minimaxi.com/v1',
     }
 
     # 默认 API Keys
@@ -75,6 +76,7 @@ class APIConfig:
         'zhipu': '',
         'cerebras': '',
         'xai': '',
+        'minimax': '',
     }
 
     # 请求超时配置（秒）
@@ -89,6 +91,7 @@ class APIConfig:
         'zhipu': 2.0,        # 智谱 API
         'cerebras': 2.0,     # Cerebras API
         'xai': 60.0,         # xAI/Grok API，联网搜索和推理可能需要更长时间
+        'minimax': 60.0,     # MiniMax 模型和 Token Plan 联网搜索
         'claude': 2.0,       # Claude API
         'gemini': 2.0,       # Gemini API
     }

@@ -19,6 +19,8 @@
 ## 已加入的本地功能
 
 - xAI/Grok Responses API 支持，可用于 `web_search` 工具。
+- MiniMax 大陆区 Token Plan Web Search 支持。角色通过高级选项启用后，程序先调用
+  `https://api.minimaxi.com/v1/coding_plan/search`，再把实时结果交给 MiniMax 模型回答。
 - Toast 支持 `toast_position_y` 初始屏幕 y 坐标。
 - Toast 右侧按钮：
   - `固`：固定当前窗口位置。
@@ -68,6 +70,23 @@ mute_restore_delay = 0.08                 # 停止录音后恢复声音的延迟
 
 该功能只切换静音状态，不修改音量数值。电脑原本已静音时，录音结束后仍保持静音。
 
+MiniMax 联网角色使用运行目录的个人角色文件配置，不要提交该文件：
+
+```python
+provider = 'minimax'
+api_url = 'https://api.minimaxi.com/v1'
+api_key = ''  # 自行填写 Token Plan Key
+model = 'MiniMax-M3'
+extra_options = {
+    'minimax_web_search': True,
+    'minimax_search_max_results': 8,
+    'minimax_search_timeout': 20,
+}
+```
+
+这些 `minimax_*` 字段是 CapsWriter 本地控制项，请求模型前会被移除，不会误传给
+Chat Completions。搜索失败或没有有效结果时会直接报错，不会退化成未联网回答。
+
 ## 官方更新后怎么合流
 
 在维护目录执行：
@@ -100,6 +119,7 @@ git status
 core/client/llm/llm_constants.py
 core/client/llm/llm_client_pool.py
 core/client/llm/llm_processor.py
+core/client/llm/llm_minimax_search.py
 core/client/llm/llm_role_config.py
 core/client/llm/llm_get_selection.py
 core/client/llm/llm_handler.py
@@ -144,6 +164,7 @@ $files = @(
   'core\client\llm\llm_constants.py',
   'core\client\llm\llm_client_pool.py',
   'core\client\llm\llm_processor.py',
+  'core\client\llm\llm_minimax_search.py',
   'core\client\llm\llm_role_config.py',
   'core\client\llm\llm_get_selection.py',
   'core\client\llm\llm_handler.py',

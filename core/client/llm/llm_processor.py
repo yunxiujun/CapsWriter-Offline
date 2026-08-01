@@ -15,6 +15,7 @@ from .llm_role_config import RoleConfig
 from .llm_interfaces import IContextManager
 from .llm_client_pool import ClientPool
 from .llm_constants import estimate_tokens
+from .llm_minimax_search import model_options, prepare_messages
 from .llm_exceptions import (
     APIException,
     wrap_openai_error, OpenAIErrorWrapper,
@@ -65,6 +66,12 @@ class LLMProcessor:
         )
 
         try:
+            messages = prepare_messages(
+                messages,
+                role_config.api_key,
+                role_config.extra_options,
+                role_config.prompt_prefix_input,
+            )
             return self._stream_request(
                 client,
                 callback,
@@ -144,7 +151,7 @@ class LLMProcessor:
 
         # 合并额外选项
         if role_config.extra_options:
-            params.update(role_config.extra_options)
+            params.update(model_options(role_config.extra_options))
 
         return params
 

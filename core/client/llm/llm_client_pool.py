@@ -30,7 +30,12 @@ class ClientPool:
         """
         # 获取 api_url（优先使用配置的 URL，否则使用默认值）
         final_url = api_url or APIConfig.DEFAULT_API_URLS.get(provider)
-        provider_key = 'xai' if final_url and 'api.x.ai' in final_url else provider
+        if final_url and 'api.x.ai' in final_url:
+            provider_key = 'xai'
+        elif final_url and 'api.minimaxi.com' in final_url:
+            provider_key = 'minimax'
+        else:
+            provider_key = provider
         cache_key = f"{provider}_{api_url}"
 
         if cache_key not in self._clients:
