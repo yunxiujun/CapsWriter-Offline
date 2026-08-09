@@ -328,6 +328,7 @@ class ToastWindowBase(ABC):
     def _monitor_rect(self, screen: int = 0):
         """返回第 screen 块显示器的虚拟坐标矩形 (x, y, w, h)
 
+        编号规则：0=主屏，1=第一块副屏，2=第二块副屏…（按枚举顺序）。
         screen <= 0 时使用主屏（返回 None 表示无需偏移）；失败时返回 None。
         """
         if screen <= 0:
@@ -335,18 +336,35 @@ class ToastWindowBase(ABC):
         import ctypes
         from ctypes import wintypes
         try:
-            rects = []
+            monitors = []
+            MONITORINFOF_PRIMARY = 0x00000001
+
+            class MONITORINFO(ctypes.Structure):
+                _fields_ = [
+                    ("cbSize", wintypes.DWORD),
+                    ("rcMonitor", wintypes.RECT),
+                    ("rcWork", wintypes.RECT),
+                    ("dwFlags", wintypes.DWORD),
+                ]
+
             @ctypes.WINFUNCTYPE(
                 ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p,
                 ctypes.POINTER(wintypes.RECT), ctypes.c_void_p
             )
             def _enum_cb(hmonitor, hdc, lprc, dwdata):
                 r = lprc.contents
-                rects.append((r.left, r.top, r.right - r.left, r.bottom - r.top))
+                mi = MONITORINFO()
+                mi.cbSize = ctypes.sizeof(MONITORINFO)
+                is_primary = False
+                if ctypes.windll.user32.GetMonitorInfoW(hmonitor, ctypes.byref(mi)):
+                    is_primary = bool(mi.dwFlags & MONITORINFOF_PRIMARY)
+                monitors.append(((r.left, r.top, r.right - r.left, r.bottom - r.top), is_primary))
                 return 1
+
             ctypes.windll.user32.EnumDisplayMonitors(None, None, _enum_cb, None)
-            if 0 < screen < len(rects):
-                return rects[screen]
+            ordered = [m for m in monitors if m[1]] + [m for m in monitors if not m[1]]
+            if 0 < screen < len(ordered):
+                return ordered[screen][0]
         except Exception:
             pass
         return None
