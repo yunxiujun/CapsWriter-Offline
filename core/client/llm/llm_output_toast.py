@@ -44,6 +44,7 @@ async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwor
             initial_width=role_config.toast_initial_width,
             initial_height=role_config.toast_initial_height,
             position_y=role_config.toast_position_y,
+            screen=role_config.toast_screen,
             streaming=True,
             window_type='text',
             markdown=True,
