@@ -10,6 +10,7 @@ LLM 处理器 - 协调器
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, Any
 from pathlib import Path
+import asyncio
 
 from .llm_role_loader import RoleLoader
 from .llm_context import ContextManager
@@ -260,6 +261,10 @@ class LLMHandler:
                                 token_count=0, polish_time=0, input_text=text)
 
 
+        # 3. 并行子角色：本角色与子角色同时处理，各自 Toast 显示
+        if role_config.parallel_roles:
+            return await self._process_parallel_roles(text, role_config, content, matched_hotwords)
+
         # 4. 根据输出模式分发处理
         if role_config.output_mode == 'toast':
             result, token_count, gen_time = await handle_toast_mode(self, text, role_config, matched_hotwords, content)
@@ -280,6 +285,54 @@ class LLMHandler:
             polish_time=time.time() - start_time,
             input_text=content,
             generation_time=gen_time
+        )
+
+    async def _process_parallel_roles(
+        self, text: str, role_config: RoleConfig, content: str, matched_hotwords=None
+    ) -> Optional[LLMResult]:
+        """并行处理本角色与 parallel_roles 子角色，各自 Toast 显示，返回合并结果"""
+        import time
+        from .llm_output_toast import handle_toast_mode
+
+        start_time = time.time()
+        sub_configs = []
+        for name in role_config.parallel_roles:
+            sub = self.roles.get(name)
+            if sub is None:
+                logger.warning("并行子角色不存在: %s", name)
+                continue
+            if sub.parallel_roles:
+                logger.warning("子角色 '%s' 不允许嵌套 parallel_roles，已跳过", name)
+                continue
+            sub_configs.append(sub)
+
+        names = [role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME]
+        tasks = [handle_toast_mode(self, text, role_config, matched_hotwords, content)]
+        for sub in sub_configs:
+            names.append(sub.display_name or RoleConfig.DEFAULT_ROLE_NAME)
+            tasks.append(handle_toast_mode(self, text, sub, matched_hotwords, content))
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        parts, total_tokens, max_gen = [], 0, 0.0
+        for name, result in zip(names, results):
+            if isinstance(result, BaseException):
+                logger.error("并行角色 '%s' 处理失败: %s", name, result)
+                continue
+            result_text, token_count, gen_time = result
+            total_tokens += token_count
+            max_gen = max(max_gen, gen_time)
+            if result_text:
+                parts.append(f"【{name}】{result_text}")
+
+        return LLMResult(
+            result="\n\n".join(parts),
+            role_name=role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME,
+            processed=True,
+            token_count=total_tokens,
+            polish_time=time.time() - start_time,
+            input_text=content,
+            generation_time=max_gen,
         )
 
 

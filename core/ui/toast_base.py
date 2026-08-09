@@ -90,7 +90,8 @@ class ToastWindowBase(ABC):
         streaming: bool,
         stop_callback: Optional[Callable[[], None]],
         markdown_enabled: bool,
-        editable: bool = False
+        editable: bool = False,
+        screen: int = 0
     ) -> None:
         """初始化 Toast 窗口基类
         
@@ -118,6 +119,7 @@ class ToastWindowBase(ABC):
         self.streaming = streaming
         self.markdown = markdown_enabled
         self.editable = editable
+        self.screen = screen
         self.duration = duration
         self.initial_width = initial_width
         self.initial_height = initial_height
@@ -322,6 +324,32 @@ class ToastWindowBase(ABC):
             max_y = max(screen_height - int(window_height), 0)
             return max(0, min(int(self.position_y), max_y))
         return screen_height // 2
+
+    def _monitor_rect(self, screen: int = 0):
+        """返回第 screen 块显示器的虚拟坐标矩形 (x, y, w, h)
+
+        screen <= 0 时使用主屏（返回 None 表示无需偏移）；失败时返回 None。
+        """
+        if screen <= 0:
+            return None
+        import ctypes
+        from ctypes import wintypes
+        try:
+            rects = []
+            @ctypes.WINFUNCTYPE(
+                ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p,
+                ctypes.POINTER(wintypes.RECT), ctypes.c_void_p
+            )
+            def _enum_cb(hmonitor, hdc, lprc, dwdata):
+                r = lprc.contents
+                rects.append((r.left, r.top, r.right - r.left, r.bottom - r.top))
+                return 1
+            ctypes.windll.user32.EnumDisplayMonitors(None, None, _enum_cb, None)
+            if 0 < screen < len(rects):
+                return rects[screen]
+        except Exception:
+            pass
+        return None
 
     @staticmethod
     def _invert_color(hex_color: str) -> str:

@@ -55,7 +55,8 @@ class ToastWindowText(ToastWindowBase):
         streaming: bool = False,
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
-        editable: bool = False
+        editable: bool = False,
+        screen: int = 0
     ) -> None:
         """创建基于 Text 组件的浮动消息窗口
         
@@ -81,7 +82,7 @@ class ToastWindowText(ToastWindowBase):
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
             duration, initial_width, initial_height, position_y, fixed, auto_dismiss, streaming,
-            stop_callback, markdown, editable
+            stop_callback, markdown, editable, screen
         )
 
         # 创建字体对象用于计算行高
@@ -139,8 +140,12 @@ class ToastWindowText(ToastWindowBase):
             calculated_width = self._calculate_actual_width()
             screen_width = self.window.winfo_screenwidth()
             screen_height = self.window.winfo_screenheight()
-            temp_x = (screen_width - calculated_width) // 2
-            temp_y = self._calculate_position_y(screen_height, 100)
+            origin_x = origin_y = 0
+            rect = self._monitor_rect(self.screen)
+            if rect:
+                origin_x, origin_y, screen_width, screen_height = rect
+            temp_x = origin_x + (screen_width - calculated_width) // 2
+            temp_y = origin_y + self._calculate_position_y(screen_height, 100)
             self.window.geometry(f'{calculated_width}x100+{temp_x}+{temp_y}')
 
             # 强制更新，让 Text 组件按照正确宽度重新计算换行
@@ -168,6 +173,10 @@ class ToastWindowText(ToastWindowBase):
         try:
             screen_width = self.window.winfo_screenwidth()
             screen_height = self.window.winfo_screenheight()
+            origin_x = origin_y = 0
+            rect = self._monitor_rect(self.screen)
+            if rect:
+                origin_x, origin_y, screen_width, screen_height = rect
 
             # 更新窗口以确保获取正确的尺寸
             self.window.update_idletasks()
@@ -194,12 +203,12 @@ class ToastWindowText(ToastWindowBase):
 
             if initial:
                 # 初始位置：水平居中，顶部在屏幕中间
-                x = (screen_width - window_width) // 2
-                y = self._calculate_position_y(screen_height, window_height)
+                x = origin_x + (screen_width - window_width) // 2
+                y = origin_y + self._calculate_position_y(screen_height, window_height)
             else:
                 # 保持当前位置，只更新大小
                 x = self.window.winfo_x()
-                y = self._calculate_position_y(screen_height, window_height) if self.fixed else self.window.winfo_y()
+                y = origin_y + self._calculate_position_y(screen_height, window_height) if self.fixed else self.window.winfo_y()
 
             self.window.geometry(f'{window_width}x{int(window_height)}+{x}+{y}')
         except tk.TclError as e:

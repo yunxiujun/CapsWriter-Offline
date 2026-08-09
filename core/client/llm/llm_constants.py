@@ -64,6 +64,7 @@ class APIConfig:
         'cerebras': 'https://api.cerebras.ai/v1',
         'xai': 'https://api.x.ai/v1',
         'minimax': 'https://api.minimaxi.com/v1',
+        'opencode': 'https://opencode.ai/zen/go/v1',
     }
 
     # 默认 API Keys
@@ -77,6 +78,7 @@ class APIConfig:
         'cerebras': '',
         'xai': '',
         'minimax': '',
+        'opencode': '',
     }
 
     # 请求超时配置（秒）
@@ -92,6 +94,7 @@ class APIConfig:
         'cerebras': 2.0,     # Cerebras API
         'xai': 60.0,         # xAI/Grok API，联网搜索和推理可能需要更长时间
         'minimax': 60.0,     # MiniMax 模型和 Token Plan 联网搜索
+        'opencode': 60.0,    # OpenCode Go 网关（美国部署，需要长超时）
         'claude': 2.0,       # Claude API
         'gemini': 2.0,       # Gemini API
     }

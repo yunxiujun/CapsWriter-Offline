@@ -91,6 +91,7 @@ class ToastMessage:
     stop_callback: Optional[Callable[[], None]] = None
     markdown: bool = False
     editable: bool = False  # Markdown 渲染后是否允许编辑
+    screen: int = 0          # 0=主屏，1=第一块副屏（Windows 多显示器）
     fixed_callback: Optional[Callable[[bool], None]] = None
     auto_dismiss_callback: Optional[Callable[[bool], None]] = None
 
@@ -207,7 +208,8 @@ class ToastMessageManager:
                     streaming=msg.streaming,
                     stop_callback=msg.stop_callback,
                     markdown=msg.markdown,
-                    editable=msg.editable
+                    editable=msg.editable,
+                    screen=msg.screen
                 )
                 toast_window.fixed_callback = msg.fixed_callback
                 toast_window.auto_dismiss_callback = msg.auto_dismiss_callback

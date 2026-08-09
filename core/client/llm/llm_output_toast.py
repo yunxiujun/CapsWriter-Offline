@@ -28,10 +28,14 @@ async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwor
     toast_manager = ToastMessageManager()
     msg_id = None
 
+    # Toast 顶部标题（如模型名），留空则不显示
+    title = getattr(role_config, 'toast_title', '') or ''
+    header = f"**{title}**\n\n" if title else ""
+
     try:
         # 创建初始 toast
         msg = ToastMessage(
-            text="",
+            text=header,
             font_family=role_config.toast_font_family,
             font_size=role_config.toast_font_size,
             bg=role_config.toast_bg_color,
@@ -58,7 +62,7 @@ async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwor
         chunks = []
         def stream_toast_chunk(chunk: str):
             chunks.append(chunk)
-            toast_manager.update_toast(msg_id, ''.join(chunks))
+            toast_manager.update_toast(msg_id, header + ''.join(chunks))
 
         # 流式调用 LLM
         polished_text, token_count, gen_time = await to_thread(

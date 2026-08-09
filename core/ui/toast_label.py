@@ -53,7 +53,8 @@ class ToastWindowLabel(ToastWindowBase):
         streaming: bool = False,
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
-        editable: bool = False
+        editable: bool = False,
+        screen: int = 0
     ) -> None:
         """创建基于 Label 组件的浮动消息窗口
         
@@ -79,7 +80,7 @@ class ToastWindowLabel(ToastWindowBase):
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
             duration, initial_width, initial_height, position_y, fixed, auto_dismiss, streaming,
-            stop_callback, markdown, editable
+            stop_callback, markdown, editable, screen
         )
 
         # 计算实际宽度
@@ -139,6 +140,10 @@ class ToastWindowLabel(ToastWindowBase):
         try:
             screen_width = self.window.winfo_screenwidth()
             screen_height = self.window.winfo_screenheight()
+            origin_x = origin_y = 0
+            rect = self._monitor_rect(self.screen)
+            if rect:
+                origin_x, origin_y, screen_width, screen_height = rect
 
             # 计算初始宽度
             calculated_width = self._calculate_actual_width()
@@ -158,12 +163,12 @@ class ToastWindowLabel(ToastWindowBase):
 
             if initial:
                 # 初始位置：水平居中，顶部在屏幕中间
-                x = (screen_width - window_width) // 2
-                y = self._calculate_position_y(screen_height, window_height)
+                x = origin_x + (screen_width - window_width) // 2
+                y = origin_y + self._calculate_position_y(screen_height, window_height)
             else:
                 # 保持当前位置，只更新大小
                 x = self.window.winfo_x()
-                y = self._calculate_position_y(screen_height, window_height) if self.fixed else self.window.winfo_y()
+                y = origin_y + self._calculate_position_y(screen_height, window_height) if self.fixed else self.window.winfo_y()
 
             self.window.geometry(f'{window_width}x{window_height}+{x}+{y}')
         except tk.TclError as e:
