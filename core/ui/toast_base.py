@@ -582,13 +582,25 @@ class ToastWindowBase(ABC):
     @staticmethod
     def _normalize_markdown_layout(text: str) -> str:
         """合并孤立的 Markdown 列表/标题标记，避免渲染器拆成空行。"""
-        text = re.sub(
-            r'(?m)^([ \t]*(?:[-+*]|\d+[.)]|#{1,6}))[ \t]*\r?\n'
-            r'(?:[ \t]*\r?\n)?[ \t]*(?=\S)',
-            r'\1 ',
-            text,
-        )
-        return re.sub(r'\n{3,}', '\n\n', text)
+        lines = text.splitlines()
+        normalized = []
+        index = 0
+        marker_pattern = re.compile(r'^\s*(?:[-+*]|\d+[.)]|#{1,6})\s*$')
+        while index < len(lines):
+            current = lines[index]
+            if marker_pattern.fullmatch(current):
+                next_index = index + 1
+                while next_index < len(lines) and not lines[next_index].strip():
+                    next_index += 1
+                if next_index < len(lines):
+                    normalized.append(
+                        f"{current.rstrip()} {lines[next_index].lstrip()}"
+                    )
+                    index = next_index + 1
+                    continue
+            normalized.append(current)
+            index += 1
+        return re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized))
 
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
