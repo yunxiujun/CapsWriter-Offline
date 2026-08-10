@@ -379,7 +379,7 @@ class ToastMessageManager:
                 pass
 
     def _mark_group_done(self, group_id: str, msg_id: str) -> None:
-        """记录一个并行成员完成；最后一个完成时统一启动倒计时。"""
+        """记录一个并行成员完成；统一收尾由 finalize_group 执行。"""
         if not group_id:
             return
         with self.parallel_group_lock:
@@ -387,7 +387,14 @@ class ToastMessageManager:
             if not group:
                 return
             group['done'].add(msg_id)
-            if group['scheduled'] or len(group['done']) < group['expected']:
+
+    def finalize_group(self, group_id: str) -> None:
+        """在并行任务全部返回后统一高度、位置和自动关闭计时。"""
+        if not group_id:
+            return
+        with self.parallel_group_lock:
+            group = self.parallel_groups.get(group_id)
+            if not group or group['scheduled']:
                 return
             windows = [
                 window for window in self.active_windows
@@ -395,10 +402,9 @@ class ToastMessageManager:
             ]
             if not windows:
                 return
+            group['scheduled'] = True
             duration = max(group['duration'], 0)
             auto_dismiss = all(window.auto_dismiss for window in windows)
-            if auto_dismiss:
-                group['scheduled'] = True
 
         screens = {getattr(window, 'screen', 0) for window in windows}
         for screen in screens:

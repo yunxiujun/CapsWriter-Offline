@@ -329,6 +329,10 @@ class LLMHandler:
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
+        if group_id:
+            from core.ui.toast import ToastMessageManager
+            ToastMessageManager().finalize_group(group_id)
+
         parts, total_tokens, max_gen = [], 0, 0.0
         for name, result in zip(names, results):
             if isinstance(result, BaseException):
