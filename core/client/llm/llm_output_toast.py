@@ -41,7 +41,8 @@ async def handle_toast_mode(
 
     # Toast 顶部标题（如模型名），留空则不显示
     title = getattr(role_config, 'toast_title', '') or ''
-    header = f"**{title}**\n\n" if title else ""
+    # 标题在流式 Text 阶段也直接显示，避免把 Markdown 的 ** 原样暴露给用户。
+    header = f"{title}\n\n" if title else ""
 
     try:
         # 创建初始 toast

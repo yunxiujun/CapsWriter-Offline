@@ -338,7 +338,7 @@ class ToastMessageManager:
             window.window.winfo_screenheight(),
         )
 
-    def _layout_group(self, group_id: str, screen: int) -> None:
+    def _layout_group(self, group_id: str, screen: int, equalize_height: bool = False) -> None:
         """将同屏并行 Toast 横向贴合排列。"""
         windows = [
             window
@@ -358,15 +358,22 @@ class ToastMessageManager:
         origin_x, origin_y, screen_width, screen_height = self._screen_rect(reference, screen)
         gap = max(0, int(getattr(reference, '_group_gap', 8)))
         tile_width = max(240, (screen_width - gap * (len(windows) - 1)) // len(windows))
-        base_y = min(window.window.winfo_y() for window in windows)
 
-        for index, window in enumerate(windows):
+        for window in windows:
             try:
                 window.initial_width = tile_width
                 window._set_window_position(initial=False)
+            except tk.TclError:
+                pass
+
+        target_height = max(window.window.winfo_height() for window in windows) if equalize_height else None
+        base_y = min(window.window.winfo_y() for window in windows)
+        for index, window in enumerate(windows):
+            try:
                 x = origin_x + index * (tile_width + gap)
+                height = target_height or window.window.winfo_height()
                 window.window.geometry(
-                    f"{tile_width}x{window.window.winfo_height()}+{x}+{base_y}"
+                    f"{tile_width}x{height}+{x}+{base_y}"
                 )
             except tk.TclError:
                 pass
@@ -386,11 +393,19 @@ class ToastMessageManager:
                 window for window in self.active_windows
                 if getattr(window, '_group_id', None) == group_id
             ]
-            if not windows or not all(window.auto_dismiss for window in windows):
+            if not windows:
                 return
-            group['scheduled'] = True
             duration = max(group['duration'], 0)
+            auto_dismiss = all(window.auto_dismiss for window in windows)
+            if auto_dismiss:
+                group['scheduled'] = True
 
+        screens = {getattr(window, 'screen', 0) for window in windows}
+        for screen in screens:
+            self._layout_group(group_id, screen, equalize_height=True)
+
+        if not auto_dismiss:
+            return
         # 成员已经各自完成 Markdown 渲染，现在统一从最后一个完成时刻计时。
         for window in windows:
             try:
