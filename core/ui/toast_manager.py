@@ -354,6 +354,11 @@ class ToastMessageManager:
             return
 
         windows.sort(key=lambda window: getattr(window, '_group_index', 0))
+        for window in windows:
+            try:
+                window.window.update_idletasks()
+            except tk.TclError:
+                pass
         reference = windows[0]
         origin_x, origin_y, screen_width, screen_height = self._screen_rect(reference, screen)
         gap = max(0, int(getattr(reference, '_group_gap', 8)))
@@ -367,7 +372,8 @@ class ToastMessageManager:
                 pass
 
         target_height = max(window.window.winfo_height() for window in windows) if equalize_height else None
-        base_y = min(window.window.winfo_y() for window in windows)
+        # 同屏多窗口时强制贴屏幕顶部，忽略各角色的 toast_position_y。
+        base_y = origin_y
         for index, window in enumerate(windows):
             try:
                 x = origin_x + index * (tile_width + gap)
@@ -415,11 +421,21 @@ class ToastMessageManager:
         # 成员已经各自完成 Markdown 渲染，现在统一从最后一个完成时刻计时。
         for window in windows:
             try:
+                window.window.update_idletasks()
                 window.duration = duration
                 if not window.mouse_inside:
                     window._start_destroy_timer()
             except tk.TclError:
                 pass
+
+    def request_finalize_group(self, group_id: str) -> None:
+        """把并行组收尾排到 Tk 队列，等待所有 Markdown 转换完成。"""
+        if not group_id:
+            return
+        if self.root and self.is_running:
+            self.root.after(100, lambda: self.finalize_group(group_id))
+        else:
+            self.finalize_group(group_id)
 
     def add_message(self, msg: ToastMessage) -> Optional[str]:
         """添加 ToastMessage 对象到队列

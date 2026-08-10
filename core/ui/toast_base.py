@@ -9,6 +9,7 @@ from tkinter import font
 from typing import Optional, Callable, Union
 from abc import ABC, abstractmethod
 import ctypes
+import re
 
 import markdown
 from tkhtmlview import HTMLLabel
@@ -578,6 +579,17 @@ class ToastWindowBase(ABC):
         # 确保系数在合理范围内
         return max(coefficient, 1.1)
 
+    @staticmethod
+    def _normalize_markdown_layout(text: str) -> str:
+        """合并孤立的 Markdown 列表/标题标记，避免渲染器拆成空行。"""
+        text = re.sub(
+            r'(?m)^([ \t]*(?:[-+*]|\d+[.)]|#{1,6}))[ \t]*\r?\n'
+            r'(?:[ \t]*\r?\n)?[ \t]*(?=\S)',
+            r'\1 ',
+            text,
+        )
+        return re.sub(r'\n{3,}', '\n\n', text)
+
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
         try:
@@ -586,7 +598,7 @@ class ToastWindowBase(ABC):
 
             # 转换 Markdown 为 HTML
             raw_html = markdown.markdown(
-                self.full_text,
+                self._normalize_markdown_layout(self.full_text),
                 extensions=['extra', 'nl2br']
             )
 
