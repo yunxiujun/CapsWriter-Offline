@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from typing import Dict, Tuple, Optional, Any
 from pathlib import Path
 import asyncio
+import re
+import uuid
 
 from .llm_role_loader import RoleLoader
 from .llm_context import ContextManager
@@ -296,7 +298,7 @@ class LLMHandler:
 
         start_time = time.time()
         sub_configs = []
-        for name in role_config.parallel_roles:
+        for name in self._normalize_parallel_role_names(role_config.parallel_roles):
             sub = self.roles.get(name)
             if sub is None:
                 logger.warning("并行子角色不存在: %s", name)
@@ -306,11 +308,24 @@ class LLMHandler:
                 continue
             sub_configs.append(sub)
 
-        names = [role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME]
-        tasks = [handle_toast_mode(self, text, role_config, matched_hotwords, content)]
-        for sub in sub_configs:
-            names.append(sub.display_name or RoleConfig.DEFAULT_ROLE_NAME)
-            tasks.append(handle_toast_mode(self, text, sub, matched_hotwords, content))
+        parallel_configs = [role_config, *sub_configs]
+        names = [config.display_name or RoleConfig.DEFAULT_ROLE_NAME for config in parallel_configs]
+        group_id = uuid.uuid4().hex if len(parallel_configs) > 1 else None
+        group_gap = max(0, int(getattr(role_config, 'parallel_gap', 0)))
+        tasks = [
+            handle_toast_mode(
+                self,
+                text,
+                config,
+                matched_hotwords,
+                content,
+                group_id=group_id,
+                group_index=index,
+                group_size=len(parallel_configs),
+                group_gap=group_gap,
+            )
+            for index, config in enumerate(parallel_configs)
+        ]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -334,6 +349,20 @@ class LLMHandler:
             input_text=content,
             generation_time=max_gen,
         )
+
+    @staticmethod
+    def _normalize_parallel_role_names(values) -> list[str]:
+        """兼容元组、列表和逗号分隔字符串的并行角色写法。"""
+        if isinstance(values, str):
+            values = (values,)
+        names = []
+        for value in values or ():
+            names.extend(
+                name.strip()
+                for name in re.split(r'[,，]', str(value))
+                if name.strip()
+            )
+        return names
 
 
 # ======================================================================

@@ -54,7 +54,8 @@ class ToastWindowLabel(ToastWindowBase):
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
         editable: bool = False,
-        screen: int = 0
+        screen: int = 0,
+        wrap_mode: str = 'word'
     ) -> None:
         """创建基于 Label 组件的浮动消息窗口
         
@@ -80,7 +81,7 @@ class ToastWindowLabel(ToastWindowBase):
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
             duration, initial_width, initial_height, position_y, fixed, auto_dismiss, streaming,
-            stop_callback, markdown, editable, screen
+            stop_callback, markdown, editable, screen, wrap_mode
         )
 
         # 计算实际宽度

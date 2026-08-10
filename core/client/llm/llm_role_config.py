@@ -33,6 +33,7 @@ class RoleConfig:
     # 功能配置
     enable_thinking: bool = False                 # 是否启用思考（仅 Ollama 支持）
     parallel_roles: Tuple[str, ...] = ()          # 触发本角色时并行调用的其他角色名（各自显示 Toast，禁止嵌套）
+    parallel_gap: int = 0                          # 同屏并行 Toast 之间的间距（像素）
     enable_history: bool = False                  # 是否保留对话历史
     enable_hotwords: bool = False                 # 是否读取潜在热词列表
     enable_read_selection: bool = False           # 是否读取鼠标所选文字（通过 Ctrl+C）
@@ -68,6 +69,7 @@ class RoleConfig:
     toast_editable: bool = False                  # Toast 是否可编辑（Markdown 渲染后）
     toast_screen: int = 0                         # 0=主屏，1=第一块副屏（Windows 多显示器）
     toast_title: str = ''                         # Toast 顶部标题（如模型名），留空不显示
+    toast_wrap_mode: str = 'word'                  # Markdown 换行：word 更少拆分，char 适合逐字符换行
 
     # 生成参数
     temperature: float = 0.7                      # 温度（0-2）

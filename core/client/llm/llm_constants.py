@@ -88,7 +88,7 @@ class APIConfig:
         'ollama': 2.0,       # 本地模型
         'lmstudio': 2.0,     # LM Studio 本地模型
         'openai': 2.0,       # OpenAI API
-        'deepseek': 2.0,     # DeepSeek API
+        'deepseek': 60.0,    # DeepSeek API；Responses API 联网搜索需要更长时间
         'moonshot': 2.0,     # Moonshot API
         'zhipu': 2.0,        # 智谱 API
         'cerebras': 2.0,     # Cerebras API

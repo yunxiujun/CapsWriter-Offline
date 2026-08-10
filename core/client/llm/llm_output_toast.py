@@ -12,7 +12,18 @@ from core.tools.asyncio_to_thread import to_thread
 logger = logging.getLogger(__name__)
 
 
-async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwords=None, content=None) -> tuple:
+async def handle_toast_mode(
+    handler,
+    text: str,
+    role_config=None,
+    matched_hotwords=None,
+    content=None,
+    *,
+    group_id=None,
+    group_index: int = 0,
+    group_size: int = 1,
+    group_gap: int = 0,
+) -> tuple:
     """Toast 浮动窗口模式"""
     from core.ui.toast import ToastMessageManager, ToastMessage
     # 兼容性检测
@@ -45,6 +56,11 @@ async def handle_toast_mode(handler, text: str, role_config=None, matched_hotwor
             initial_height=role_config.toast_initial_height,
             position_y=role_config.toast_position_y,
             screen=role_config.toast_screen,
+            wrap_mode=getattr(role_config, 'toast_wrap_mode', 'word'),
+            group_id=group_id,
+            group_index=group_index,
+            group_size=group_size,
+            group_gap=group_gap,
             streaming=True,
             window_type='text',
             markdown=True,

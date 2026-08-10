@@ -92,6 +92,11 @@ class ToastMessage:
     markdown: bool = False
     editable: bool = False  # Markdown 渲染后是否允许编辑
     screen: int = 0          # 0=主屏，1=第一块副屏（Windows 多显示器）
+    wrap_mode: str = 'word'   # Markdown 换行模式
+    group_id: Optional[str] = None
+    group_index: int = 0
+    group_size: int = 1
+    group_gap: int = 0
     fixed_callback: Optional[Callable[[bool], None]] = None
     auto_dismiss_callback: Optional[Callable[[bool], None]] = None
 
@@ -131,6 +136,8 @@ class ToastMessageManager:
         self.is_running = False
         self.active_windows: List = []  # 运行时类型，避免循环导入
         self.root: Optional[tk.Tk] = None
+        self.parallel_groups = {}
+        self.parallel_group_lock = threading.Lock()
         self.state_path = Path(__file__).resolve().parents[2] / '.toast_state.json'
         self.fixed_preference: Optional[bool] = None
         self.auto_dismiss_preference: Optional[bool] = None
@@ -209,8 +216,13 @@ class ToastMessageManager:
                     stop_callback=msg.stop_callback,
                     markdown=msg.markdown,
                     editable=msg.editable,
-                    screen=msg.screen
+                    screen=msg.screen,
+                    wrap_mode=msg.wrap_mode
                 )
+                toast_window._group_id = msg.group_id
+                toast_window._group_index = msg.group_index
+                toast_window._group_size = msg.group_size
+                toast_window._group_gap = msg.group_gap
                 toast_window.fixed_callback = msg.fixed_callback
                 toast_window.auto_dismiss_callback = msg.auto_dismiss_callback
 
@@ -223,6 +235,8 @@ class ToastMessageManager:
                     '<Destroy>',
                     lambda _, w=toast_window: self._remove_window(w)
                 )
+                if msg.group_id:
+                    self._layout_group(msg.group_id, msg.screen)
 
             # 清理已销毁的窗口
             self.active_windows = [
@@ -288,6 +302,104 @@ class ToastMessageManager:
         except Exception as e:
             logger.warning(f"保存 Toast 状态失败: {e}")
 
+    def _register_group_message(self, msg_id: str, msg: ToastMessage) -> None:
+        """登记并行 Toast，供同屏布局和统一倒计时使用。"""
+        if not msg.group_id:
+            return
+        with self.parallel_group_lock:
+            group = self.parallel_groups.setdefault(
+                msg.group_id,
+                {
+                    'expected': msg.group_size,
+                    'members': {},
+                    'done': set(),
+                    'scheduled': False,
+                    'duration': 0,
+                },
+            )
+            group['expected'] = max(group['expected'], msg.group_size)
+            group['members'][msg_id] = {
+                'screen': msg.screen,
+                'index': msg.group_index,
+                'duration': msg.duration,
+            }
+            group['duration'] = max(group['duration'], msg.duration)
+
+    def _screen_rect(self, window, screen: int):
+        """获取 Toast 目标屏幕的虚拟桌面矩形。"""
+        if screen > 0:
+            rect = window._monitor_rect(screen)
+            if rect:
+                return rect
+        return (
+            0,
+            0,
+            window.window.winfo_screenwidth(),
+            window.window.winfo_screenheight(),
+        )
+
+    def _layout_group(self, group_id: str, screen: int) -> None:
+        """将同屏并行 Toast 横向贴合排列。"""
+        windows = [
+            window
+            for window in self.active_windows
+            if getattr(window, '_group_id', None) == group_id
+            and getattr(window, 'screen', 0) == screen
+            and self._window_exists(window)
+        ]
+        if not windows:
+            return
+        if len(windows) == 1:
+            # 单窗口保持原有宽度和拖动行为。
+            return
+
+        windows.sort(key=lambda window: getattr(window, '_group_index', 0))
+        reference = windows[0]
+        origin_x, origin_y, screen_width, screen_height = self._screen_rect(reference, screen)
+        gap = max(0, int(getattr(reference, '_group_gap', 8)))
+        tile_width = max(240, (screen_width - gap * (len(windows) - 1)) // len(windows))
+        base_y = min(window.window.winfo_y() for window in windows)
+
+        for index, window in enumerate(windows):
+            try:
+                window.initial_width = tile_width
+                window._set_window_position(initial=False)
+                x = origin_x + index * (tile_width + gap)
+                window.window.geometry(
+                    f"{tile_width}x{window.window.winfo_height()}+{x}+{base_y}"
+                )
+            except tk.TclError:
+                pass
+
+    def _mark_group_done(self, group_id: str, msg_id: str) -> None:
+        """记录一个并行成员完成；最后一个完成时统一启动倒计时。"""
+        if not group_id:
+            return
+        with self.parallel_group_lock:
+            group = self.parallel_groups.get(group_id)
+            if not group:
+                return
+            group['done'].add(msg_id)
+            if group['scheduled'] or len(group['done']) < group['expected']:
+                return
+            windows = [
+                window for window in self.active_windows
+                if getattr(window, '_group_id', None) == group_id
+            ]
+            if not windows or not all(window.auto_dismiss for window in windows):
+                return
+            group['scheduled'] = True
+            duration = max(group['duration'], 0)
+
+        # 成员已经各自完成 Markdown 渲染，现在统一从最后一个完成时刻计时。
+        for window in windows:
+            try:
+                window.duration = duration
+                if not window.mouse_inside:
+                    window._start_destroy_timer()
+            except tk.TclError:
+                pass
+
     def add_message(self, msg: ToastMessage) -> Optional[str]:
         """添加 ToastMessage 对象到队列
 
@@ -300,6 +412,7 @@ class ToastMessageManager:
         import uuid
         msg_id = str(uuid.uuid4())
         msg._id = msg_id  # 添加唯一标识符
+        self._register_group_message(msg_id, msg)
         self.message_queue.put(msg)
         return msg_id
 
@@ -325,7 +438,10 @@ class ToastMessageManager:
         for window in self.active_windows:
             if getattr(window, '_msg_id', None) == msg_id:
                 if window.streaming:
-                    window.finish()
+                    group_id = getattr(window, '_group_id', None)
+                    window.finish(start_timer=not group_id)
+                    if group_id:
+                        self._mark_group_done(group_id, msg_id)
                 return
         logger.warning(f"未找到消息 ID: {msg_id[:8]}")
 
@@ -337,6 +453,9 @@ class ToastMessageManager:
         """
         for window in self.active_windows[:]:
             if getattr(window, '_msg_id', None) == msg_id:
+                group_id = getattr(window, '_group_id', None)
+                if group_id:
+                    self._mark_group_done(group_id, msg_id)
                 try:
                     window.window.destroy()
                     self.active_windows.remove(window)

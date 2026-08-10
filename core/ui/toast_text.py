@@ -56,7 +56,8 @@ class ToastWindowText(ToastWindowBase):
         stop_callback: Optional[Callable[[], None]] = None,
         markdown: bool = False,
         editable: bool = False,
-        screen: int = 0
+        screen: int = 0,
+        wrap_mode: str = 'word'
     ) -> None:
         """创建基于 Text 组件的浮动消息窗口
         
@@ -82,7 +83,7 @@ class ToastWindowText(ToastWindowBase):
         super().__init__(
             parent_root, text, font_size, font_family, bg, fg,
             duration, initial_width, initial_height, position_y, fixed, auto_dismiss, streaming,
-            stop_callback, markdown, editable, screen
+            stop_callback, markdown, editable, screen, wrap_mode
         )
 
         # 创建字体对象用于计算行高

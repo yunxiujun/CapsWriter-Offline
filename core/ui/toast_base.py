@@ -91,7 +91,8 @@ class ToastWindowBase(ABC):
         stop_callback: Optional[Callable[[], None]],
         markdown_enabled: bool,
         editable: bool = False,
-        screen: int = 0
+        screen: int = 0,
+        wrap_mode: str = 'word'
     ) -> None:
         """初始化 Toast 窗口基类
         
@@ -120,6 +121,7 @@ class ToastWindowBase(ABC):
         self.markdown = markdown_enabled
         self.editable = editable
         self.screen = screen
+        self.wrap_mode = wrap_mode if wrap_mode in ('word', 'char') else 'word'
         self.duration = duration
         self.initial_width = initial_width
         self.initial_height = initial_height
@@ -311,6 +313,9 @@ class ToastWindowBase(ABC):
             窗口宽度（像素）
         """
         screen_width = self.window.winfo_screenwidth()
+        rect = self._monitor_rect(self.screen)
+        if rect:
+            screen_width = rect[2]
         if 0 < self.initial_width < 1:
             # 0-1 之间的小数，使用屏幕宽度的比例
             return int(screen_width * self.initial_width)
@@ -627,7 +632,7 @@ class ToastWindowBase(ABC):
             self.md_label = HTMLLabel(
                 self.content_frame,
                 html=full_html,
-                wrap="char",
+                wrap=self.wrap_mode,
                 background=self.bg,
                 padx=DEFAULT_PADDING_X,
                 pady=DEFAULT_PADDING_Y
@@ -716,7 +721,7 @@ class ToastWindowBase(ABC):
     # 流式输出完成
     # --------------------------------------------------------
 
-    def finish(self) -> None:
+    def finish(self, start_timer: bool = True) -> None:
         """完成流式输出
 
         标记流式输出结束，如果启用了 Markdown 则转换渲染，
@@ -730,5 +735,5 @@ class ToastWindowBase(ABC):
                 self._switch_to_markdown()
 
             # 只有当鼠标不在窗口内时才启动计时器
-            if not self.mouse_inside and self.auto_dismiss:
+            if start_timer and not self.mouse_inside and self.auto_dismiss:
                 self._start_destroy_timer()
