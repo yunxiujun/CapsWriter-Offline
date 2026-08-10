@@ -438,59 +438,29 @@ class ToastWindowBase(ABC):
         self.window.geometry(f"+{x}+{y}")
 
     def _on_mouse_wheel(self, event: tk.Event) -> str:
-        """滚轮调整窗口垂直位置
+        """滚轮只滚动 Toast 内容，不改变窗口位置。"""
+        return self._scroll_content(event)
 
-        允许在屏幕中线到屏幕底边之间滚动：
-        - 窗口底部超出屏幕时，可以向上滚动（减小 y）
-        - 窗口顶部超过屏幕中线时，可以向下滚动（增加 y）
-
-        Returns:
-            "break" 阻止事件继续传播
-        """
+    def _scroll_content(self, event: tk.Event) -> str:
+        """滚动当前内容控件，避免滚轮把整个窗口拖动。"""
         try:
-            self.window.update_idletasks()
-            current_y = self.window.winfo_y()
-            window_height = self.window.winfo_height()
-            screen_height = self.window.winfo_screenheight()
-            screen_middle = screen_height // 2
+            widget = getattr(self, 'md_label', None) or getattr(self, 'text_area', None)
+            if widget is None or not hasattr(widget, 'yview_scroll'):
+                return "break"
 
-            # 判定滚动方向
             delta = getattr(event, 'delta', 0)
             num = getattr(event, 'num', 0)
-
             if delta:
-                is_scroll_up = (delta < 0)
+                amount = -1 if delta > 0 else 1
             elif num:
-                is_scroll_up = (num != 4)
+                amount = -1 if num == 4 else 1
             else:
                 return "break"
 
-            # 计算边界
-            # top_limit: 窗口在最低位置时的 y 坐标（底部刚好在屏幕底边）
-            # bottom_limit: 窗口在最高位置时的 y 坐标（顶部在屏幕中线）
-            top_limit = screen_height - window_height
-            bottom_limit = screen_middle
-
-            # 检查是否允许滚动
-            window_bottom = current_y + window_height
-            can_scroll_up = window_bottom > screen_height  # 底部超出屏幕，可向上滚动
-            can_scroll_down = current_y < screen_middle    # 顶部在中线之上，可向下滚动
-
-            # 根据滚动方向和位置判断是否执行滚动
-            if is_scroll_up and can_scroll_up:
-                # 向上滚动（减小 y）
-                target_y = max(current_y - SCROLL_STEP, top_limit)
-                if target_y != current_y:
-                    self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
-            elif not is_scroll_up and can_scroll_down:
-                # 向下滚动（增加 y）
-                target_y = min(current_y + SCROLL_STEP, bottom_limit)
-                if target_y != current_y:
-                    self.window.geometry(f"+{self.window.winfo_x()}+{int(target_y)}")
-
+            widget.yview_scroll(amount, 'units')
             return "break"
         except tk.TclError as e:
-            logger.warning(f"滚动事件处理失败: {e}")
+            logger.debug(f"Toast 内容滚动失败: {e}")
             return "break"
 
     def _on_copy(self, _event: tk.Event) -> str:
@@ -638,6 +608,8 @@ class ToastWindowBase(ABC):
                 pady=DEFAULT_PADDING_Y
             )
             self.md_label.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+            for sequence in ('<MouseWheel>', '<Button-4>', '<Button-5>'):
+                self.md_label.bind(sequence, self._scroll_content)
             
             # 根据 editable 参数设置是否可编辑
             # DISABLED 状态下仍可选择文字，但无法编辑

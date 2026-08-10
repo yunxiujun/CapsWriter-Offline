@@ -117,9 +117,7 @@ class ToastWindowText(ToastWindowBase):
         # 禁用 Text 组件的默认滚轮行为，让其传播到窗口
         # 通过将事件绑定到空函数来阻止 Text 的内置滚动，但不阻止传播
         def pass_to_window(event):
-            # 让窗口处理这个事件
-            self.window.event_generate('<MouseWheel>', x=event.x, y=event.y, delta=event.delta)
-            return "break"
+            return self._scroll_content(event)
 
         self.text_area.bind('<MouseWheel>', pass_to_window)
         self.text_area.bind('<Button-4>', pass_to_window)  # Linux
