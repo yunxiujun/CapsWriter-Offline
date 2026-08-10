@@ -70,6 +70,7 @@ class RoleConfig:
     toast_screen: int = 0                         # 0=主屏，1=第一块副屏（Windows 多显示器）
     toast_title: str = ''                         # Toast 顶部标题（如模型名），留空不显示
     toast_wrap_mode: str = 'word'                  # Markdown 换行：word 更少拆分，char 适合逐字符换行
+    toast_state_key: str = ''                      # 固定/自动关闭/位置的独立记忆键，留空自动使用角色名
 
     # 生成参数
     temperature: float = 0.7                      # 温度（0-2）

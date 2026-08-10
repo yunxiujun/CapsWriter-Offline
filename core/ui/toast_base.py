@@ -131,6 +131,7 @@ class ToastWindowBase(ABC):
         self.auto_dismiss = auto_dismiss
         self.fixed_callback: Optional[Callable[[bool], None]] = None
         self.auto_dismiss_callback: Optional[Callable[[bool], None]] = None
+        self.position_callback: Optional[Callable[[int, int], None]] = None
         
         # 状态标志
         self.pause = False
@@ -261,6 +262,8 @@ class ToastWindowBase(ABC):
             self.fixed = True
             if self.fixed_callback:
                 self.fixed_callback(self.fixed)
+            if self.position_callback:
+                self.position_callback(self.window.winfo_x(), self.window.winfo_y())
             self.pause = False
             self._update_pin_button_state()
         except tk.TclError as e:
@@ -440,6 +443,8 @@ class ToastWindowBase(ABC):
         if self.fixed:
             return
         self.pause = False
+        if self.position_callback:
+            self.position_callback(self.window.winfo_x(), self.window.winfo_y())
 
     def _on_drag_motion(self, event: tk.Event) -> None:
         """拖动中，更新窗口位置"""

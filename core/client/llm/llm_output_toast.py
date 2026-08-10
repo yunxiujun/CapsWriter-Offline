@@ -41,6 +41,12 @@ async def handle_toast_mode(
 
     # Toast 顶部标题（如模型名），留空则不显示
     title = getattr(role_config, 'toast_title', '') or ''
+    state_key = (
+        getattr(role_config, 'toast_state_key', '')
+        or title
+        or role_config.display_name
+        or role_config.module_name
+    )
     # 标题在流式 Text 阶段也直接显示，避免把 Markdown 的 ** 原样暴露给用户。
     header = f"{title}\n\n" if title else ""
 
@@ -62,6 +68,7 @@ async def handle_toast_mode(
             group_index=group_index,
             group_size=group_size,
             group_gap=group_gap,
+            state_key=state_key,
             streaming=True,
             window_type='text',
             markdown=True,

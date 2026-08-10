@@ -97,6 +97,8 @@ class ToastMessage:
     group_index: int = 0
     group_size: int = 1
     group_gap: int = 0
+    state_key: str = ''
+    position_callback: Optional[Callable[[int, int], None]] = None
     fixed_callback: Optional[Callable[[bool], None]] = None
     auto_dismiss_callback: Optional[Callable[[bool], None]] = None
 
@@ -141,6 +143,7 @@ class ToastMessageManager:
         self.state_path = Path(__file__).resolve().parents[2] / '.toast_state.json'
         self.fixed_preference: Optional[bool] = None
         self.auto_dismiss_preference: Optional[bool] = None
+        self.role_states = {}
         self._load_state()
 
         # 在子线程中启动 Tkinter
@@ -196,8 +199,14 @@ class ToastMessageManager:
                     msg.fixed = self.fixed_preference
                 if self.auto_dismiss_preference is not None:
                     msg.auto_dismiss = self.auto_dismiss_preference
-                msg.fixed_callback = self._set_fixed_preference
-                msg.auto_dismiss_callback = self._set_auto_dismiss_preference
+                role_state = self.role_states.get(msg.state_key, {}) if msg.state_key else {}
+                if isinstance(role_state.get('fixed'), bool):
+                    msg.fixed = role_state['fixed']
+                if isinstance(role_state.get('auto_dismiss'), bool):
+                    msg.auto_dismiss = role_state['auto_dismiss']
+                msg.fixed_callback = lambda value, key=msg.state_key: self._set_fixed_preference(value, key)
+                msg.auto_dismiss_callback = lambda value, key=msg.state_key: self._set_auto_dismiss_preference(value, key)
+                msg.position_callback = lambda x, y, key=msg.state_key: self._set_position(key, x, y)
 
                 toast_window = WindowClass(
                     self.root,
@@ -225,6 +234,15 @@ class ToastMessageManager:
                 toast_window._group_gap = msg.group_gap
                 toast_window.fixed_callback = msg.fixed_callback
                 toast_window.auto_dismiss_callback = msg.auto_dismiss_callback
+                toast_window.position_callback = msg.position_callback
+
+                if msg.state_key:
+                    state = self.role_states.get(msg.state_key, {})
+                    saved_x, saved_y = state.get('x'), state.get('y')
+                    if isinstance(saved_x, int) and isinstance(saved_y, int):
+                        toast_window.window.geometry(
+                            f"{toast_window.window.winfo_width()}x{toast_window.window.winfo_height()}+{saved_x}+{saved_y}"
+                        )
 
                 # 保存消息ID到窗口对象
                 toast_window._msg_id = msg_id
@@ -263,14 +281,28 @@ class ToastMessageManager:
         if window in self.active_windows:
             self.active_windows.remove(window)
 
-    def _set_auto_dismiss_preference(self, auto_dismiss: bool) -> None:
+    def _set_auto_dismiss_preference(self, auto_dismiss: bool, state_key: str = '') -> None:
         """记住用户最近一次选择的 Toast 自动消失状态。"""
-        self.auto_dismiss_preference = auto_dismiss
+        if state_key:
+            self.role_states.setdefault(state_key, {})['auto_dismiss'] = auto_dismiss
+        else:
+            self.auto_dismiss_preference = auto_dismiss
         self._save_state()
 
-    def _set_fixed_preference(self, fixed: bool) -> None:
+    def _set_fixed_preference(self, fixed: bool, state_key: str = '') -> None:
         """记住用户最近一次选择的 Toast 固定/移动状态。"""
-        self.fixed_preference = fixed
+        if state_key:
+            self.role_states.setdefault(state_key, {})['fixed'] = fixed
+        else:
+            self.fixed_preference = fixed
+        self._save_state()
+
+    def _set_position(self, state_key: str, x: int, y: int) -> None:
+        """记住指定角色 Toast 的最后窗口坐标。"""
+        if not state_key:
+            return
+        self.role_states.setdefault(state_key, {})['x'] = int(x)
+        self.role_states.setdefault(state_key, {})['y'] = int(y)
         self._save_state()
 
     def _load_state(self) -> None:
@@ -285,6 +317,13 @@ class ToastMessageManager:
                 self.fixed_preference = fixed
             if isinstance(auto_dismiss, bool):
                 self.auto_dismiss_preference = auto_dismiss
+            role_states = data.get('roles')
+            if isinstance(role_states, dict):
+                self.role_states = {
+                    str(key): value
+                    for key, value in role_states.items()
+                    if isinstance(value, dict)
+                }
         except Exception as e:
             logger.warning(f"读取 Toast 状态失败: {e}")
 
@@ -294,6 +333,7 @@ class ToastMessageManager:
             data = {
                 'fixed': self.fixed_preference,
                 'auto_dismiss': self.auto_dismiss_preference,
+                'roles': self.role_states,
             }
             self.state_path.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2),
