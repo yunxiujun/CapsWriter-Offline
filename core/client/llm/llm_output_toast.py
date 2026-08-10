@@ -43,9 +43,9 @@ async def handle_toast_mode(
     title = getattr(role_config, 'toast_title', '') or ''
     state_key = (
         getattr(role_config, 'toast_state_key', '')
-        or title
-        or role_config.display_name
         or role_config.module_name
+        or role_config.display_name
+        or title
     )
     # 标题在流式 Text 阶段也直接显示，避免把 Markdown 的 ** 原样暴露给用户。
     header = f"{title}\n\n" if title else ""
