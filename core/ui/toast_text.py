@@ -198,6 +198,10 @@ class ToastWindowText(ToastWindowBase):
 
             # 限制最小高度
             window_height = max(window_height, MIN_WINDOW_HEIGHT)
+            window_height = min(
+                window_height,
+                self._available_window_height(screen_height, origin_y, initial),
+            )
             window_width = calculated_width
 
             if initial:
@@ -259,14 +263,23 @@ class ToastWindowText(ToastWindowBase):
                 current_h = self.window.winfo_height()
                 current_w = self.window.winfo_width()
 
-                # 更新 Text 组件的高度，使其能显示所有行
-                self.text_area.config(height=current_lines)
+                screen_height = self.window.winfo_screenheight()
+                origin_y = 0
+                rect = self._monitor_rect(self.screen)
+                if rect:
+                    origin_y, screen_height = rect[1], rect[3]
+                max_height = self._available_window_height(screen_height, origin_y)
+                max_lines = max(1, int((max_height - HEIGHT_PADDING) / self.line_height))
 
-                # 如果需要增长高度
-                if needed_h > current_h:
+                # 更新 Text 组件的高度，使其能显示所有行
+                self.text_area.config(height=min(current_lines, max_lines))
+
+                # 限制在屏幕可用区域内，超出的内容通过滚轮查看
+                target_height = min(max(needed_h, current_h), max_height)
+                if target_height != current_h:
                     curr_x = self.window.winfo_x()
                     curr_y = self.window.winfo_y()
-                    self.window.geometry(f"{current_w}x{int(needed_h)}+{curr_x}+{curr_y}")
+                    self.window.geometry(f"{current_w}x{int(target_height)}+{curr_x}+{curr_y}")
 
                 self.last_char_count = current_char_count
             except tk.TclError:

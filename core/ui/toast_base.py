@@ -375,6 +375,19 @@ class ToastWindowBase(ABC):
             pass
         return None
 
+    def _available_window_height(
+        self, screen_height: int, origin_y: int = 0, initial: bool = False
+    ) -> int:
+        """计算窗口从当前位置到屏幕底部可使用的最大高度。"""
+        if initial:
+            relative_y = self.position_y if self.position_y >= 0 else screen_height // 2
+        else:
+            try:
+                relative_y = max(0, self.window.winfo_y() - origin_y)
+            except tk.TclError:
+                relative_y = 0
+        return max(MIN_WINDOW_HEIGHT, screen_height - int(relative_y) - 8)
+
     @staticmethod
     def _invert_color(hex_color: str) -> str:
         """计算十六进制颜色的反色
@@ -679,9 +692,27 @@ class ToastWindowBase(ABC):
             # 使用动态系数确保内容完全显示
             margin_coefficient = self._calculate_height_coefficient(content_height)
             final_h = max(int(content_height * margin_coefficient), MARKDOWN_MIN_HEIGHT)
+            monitor_rect = self._monitor_rect(self.screen)
+            if monitor_rect:
+                monitor_y, monitor_height = monitor_rect[1], monitor_rect[3]
+            else:
+                monitor_y, monitor_height = 0, self.window.winfo_screenheight()
+            final_h = min(
+                final_h,
+                self._available_window_height(monitor_height, monitor_y),
+            )
+            try:
+                line_height = max(int(self.font_size * 1.5), 1)
+                visible_lines = max(
+                    1,
+                    int((final_h - DEFAULT_PADDING_Y * 2) / line_height),
+                )
+                self.md_label.config(height=visible_lines)
+            except tk.TclError:
+                pass
             final_w = self._calculate_actual_width()
             if self.fixed:
-                cy = self._calculate_position_y(self.window.winfo_screenheight(), final_h)
+                cy = monitor_y + self._calculate_position_y(monitor_height, final_h)
 
             self.window.geometry(f"{final_w}x{int(final_h)}+{cx}+{cy}")
 
