@@ -716,7 +716,7 @@ class ToastWindowBase(ABC):
             except tk.TclError:
                 pass
             final_w = self._calculate_actual_width()
-            if self.fixed:
+            if self.fixed and not getattr(self, '_group_id', None):
                 cy = monitor_y + self._calculate_position_y(monitor_height, final_h)
 
             self.window.geometry(f"{final_w}x{int(final_h)}+{cx}+{cy}")

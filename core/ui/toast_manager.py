@@ -240,9 +240,8 @@ class ToastMessageManager:
                     state = self.role_states.get(msg.state_key, {})
                     saved_x, saved_y = state.get('x'), state.get('y')
                     if isinstance(saved_x, int) and isinstance(saved_y, int):
-                        toast_window.window.geometry(
-                            f"{toast_window.window.winfo_width()}x{toast_window.window.winfo_height()}+{saved_x}+{saved_y}"
-                        )
+                        # 只恢复坐标，不能用尚未完成布局的临时宽高覆盖窗口尺寸。
+                        toast_window.window.geometry(f"+{saved_x}+{saved_y}")
 
                 # 保存消息ID到窗口对象
                 toast_window._msg_id = msg_id
