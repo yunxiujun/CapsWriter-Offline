@@ -165,7 +165,16 @@ class LLMHandler:
         """
         return self.role_detector.detect(text)
 
-    def process(self, role_config: RoleConfig, content: str, matched_hotwords=None, callback=None) -> Tuple[str, int, float]:
+    def process(
+        self,
+        role_config: RoleConfig,
+        content: str,
+        matched_hotwords=None,
+        callback=None,
+        context_manager=None,
+        selection_text_override=None,
+        clipboard_text_override=None,
+    ) -> Tuple[str, int, float]:
         """执行实际的 LLM 模型调用（内部方法）
 
         Args:
@@ -184,7 +193,8 @@ class LLMHandler:
         logger.debug(f"开始 LLM 核心处理 [角色: {role_name}] [内容长度: {len(content)}]")
 
         # 获取上下文管理器（如果启用历史）
-        context_manager = self.context_managers.get(role_name) if role_config.enable_history else None
+        if context_manager is None:
+            context_manager = self.context_managers.get(role_name) if role_config.enable_history else None
         if context_manager:
             logger.debug(f"角色 '{role_name}' 启用历史，当前历史条数: {len(context_manager.history)}")
         
@@ -192,6 +202,16 @@ class LLMHandler:
         if role_config.enable_knowledge_base:
             clipboard_text = ""
             selection_text = ""
+        elif selection_text_override is not None or clipboard_text_override is not None:
+            clipboard_text = clipboard_text_override if role_config.enable_read_clipboard else ""
+            if clipboard_text:
+                max_length = int(getattr(role_config, 'clipboard_max_length', 20000))
+                clipboard_text = clipboard_text[:max_length] if max_length > 0 else clipboard_text
+                selection_text = ""
+            else:
+                selection_text = selection_text_override if role_config.enable_read_selection else ""
+                max_length = int(getattr(role_config, 'selection_max_length', 1000))
+                selection_text = selection_text[:max_length] if max_length > 0 else selection_text
         else:
             # 明确说出剪贴板关键词时优先读取剪贴板，不再模拟 Ctrl+C 覆盖它
             clipboard_text = get_clipboard_text(role_config, content)
@@ -297,6 +317,12 @@ class LLMHandler:
         from .llm_output_toast import handle_toast_mode
 
         start_time = time.time()
+        from core.tools.asyncio_to_thread import to_thread
+        shared_clipboard, shared_selection = await to_thread(
+            self._read_parallel_context,
+            role_config,
+            content,
+        )
         sub_configs = []
         for name in self._normalize_parallel_role_names(role_config.parallel_roles):
             sub = self.roles.get(name)
@@ -323,6 +349,8 @@ class LLMHandler:
                 group_index=index,
                 group_size=len(parallel_configs),
                 group_gap=group_gap,
+                selection_text_override=shared_selection,
+                clipboard_text_override=shared_clipboard,
             )
             for index, config in enumerate(parallel_configs)
         ]
@@ -331,7 +359,7 @@ class LLMHandler:
 
         if group_id:
             from core.ui.toast import ToastMessageManager
-            ToastMessageManager().finalize_group(group_id)
+            ToastMessageManager().request_finalize_group(group_id)
 
         parts, total_tokens, max_gen = [], 0, 0.0
         for name, result in zip(names, results):
@@ -353,6 +381,14 @@ class LLMHandler:
             input_text=content,
             generation_time=max_gen,
         )
+
+    def _read_parallel_context(self, role_config: RoleConfig, content: str) -> tuple[str, str]:
+        """并行组只读取一次剪贴板/选区，避免多个角色竞争 Ctrl+C。"""
+        if role_config.enable_knowledge_base:
+            return "", ""
+        clipboard_text = get_clipboard_text(role_config, content)
+        selection_text = "" if clipboard_text else get_selected_text(role_config, self.app.state)
+        return clipboard_text, selection_text
 
     @staticmethod
     def _normalize_parallel_role_names(values) -> list[str]:

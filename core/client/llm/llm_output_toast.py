@@ -23,6 +23,8 @@ async def handle_toast_mode(
     group_index: int = 0,
     group_size: int = 1,
     group_gap: int = 0,
+    selection_text_override=None,
+    clipboard_text_override=None,
 ) -> tuple:
     """Toast 浮动窗口模式"""
     from core.ui.toast import ToastMessageManager, ToastMessage
@@ -91,7 +93,14 @@ async def handle_toast_mode(
 
         # 流式调用 LLM
         polished_text, token_count, gen_time = await to_thread(
-            handler.process, role_config, content, matched_hotwords, stream_toast_chunk
+            handler.process,
+            role_config,
+            content,
+            matched_hotwords,
+            stream_toast_chunk,
+            None,
+            selection_text_override,
+            clipboard_text_override,
         )
 
         if handler.monitor.should_stop():
