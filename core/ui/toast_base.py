@@ -618,7 +618,46 @@ class ToastWindowBase(ABC):
                     continue
             normalized.append(current)
             index += 1
-        return re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized))
+        return ToastWindowBase._protect_tables(re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized)))
+
+    @staticmethod
+    def _protect_tables(text: str) -> str:
+        """把 Markdown 表格块用 <pre> 隔离，避免 extra 扩展转成 <table>。
+
+        tkhtmlview 不支持 <table>，转成 table 后单元格内容会被空格化。
+        隔离后保留原始管道语法：显示为管道表格，复制出去可还原为标准
+        Markdown 表格。
+        """
+        import html
+        lines = text.splitlines()
+        output = []
+        index = 0
+        while index < len(lines):
+            stripped = lines[index].strip()
+            if (
+                stripped.startswith('|')
+                and stripped.rstrip().endswith('|')
+                and '|' in stripped[1:]
+            ):
+                rows = [lines[index]]
+                cursor = index + 1
+                while cursor < len(lines):
+                    next_stripped = lines[cursor].strip()
+                    if (
+                        next_stripped.startswith('|')
+                        and next_stripped.rstrip().endswith('|')
+                    ):
+                        rows.append(lines[cursor])
+                        cursor += 1
+                    else:
+                        break
+                if len(rows) >= 2 and re.match(r'^\s*\|[\s:|-]+\|\s*$', rows[1]):
+                    output.append('<pre>' + html.escape('\n'.join(rows)) + '</pre>')
+                    index = cursor
+                    continue
+            output.append(lines[index])
+            index += 1
+        return '\n'.join(output)
 
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
