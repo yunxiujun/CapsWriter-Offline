@@ -1,4 +1,4 @@
-"""
+﻿"""
 Toast 窗口基础模块
 
 提供 Toast 窗口的抽象基类和通用工具函数。
@@ -618,8 +618,7 @@ class ToastWindowBase(ABC):
                     continue
             normalized.append(current)
             index += 1
-        text = re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized))
-        return text
+        return re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized))
 
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
