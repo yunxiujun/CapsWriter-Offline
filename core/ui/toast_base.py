@@ -623,10 +623,10 @@ class ToastWindowBase(ABC):
 
     @staticmethod
     def _format_tables_as_pre(text: str) -> str:
-        """把 Markdown 表格转换为等宽 <pre> 文本，供 tkhtmlview 显示。
+        """把 Markdown 表格转换为框线表格，放进等宽 <pre> 显示。
 
-        tkhtmlview 不支持 <table>，但支持 <pre> 等宽字体并保留空格，
-        因此把表格按列宽对齐后放进 <pre> 块。
+        tkhtmlview 不支持 <table>，但支持 <pre> 等宽字体并保留空格。
+        用 Unicode 框线字符（┌─┬─┐│├┼┤└┴┘）绘制真正的表格外观。
         """
         import unicodedata
 
@@ -662,16 +662,27 @@ class ToastWindowBase(ABC):
                         for col, cell in enumerate(row):
                             widths[col] = max(widths[col], display_width(cell))
 
-                    def format_row(row):
-                        padded = []
-                        for col in range(column_count):
-                            cell = row[col] if col < len(row) else ''
-                            padded.append(cell + ' ' * (widths[col] - display_width(cell)))
-                        return '| ' + ' | '.join(padded) + ' |'
+                    def pad(cell: str, width: int) -> str:
+                        # 使用不间断空格填充，避免 word 换行拆散表格。
+                        return cell + '\u00a0' * (width - display_width(cell))
 
-                    separator = '| ' + ' | '.join('-' * w for w in widths) + ' |'
-                    block = [format_row(all_rows[0]), separator]
-                    block.extend(format_row(row) for row in all_rows[1:])
+                    def render_row(row):
+                        cells = [
+                            pad(row[col] if col < len(row) else '', widths[col])
+                            for col in range(column_count)
+                        ]
+                        return '│ ' + ' │ '.join(cells) + ' │'
+
+                    def render_separator(left, middle, right):
+                        return left + middle.join('─' * (w + 2) for w in widths) + right
+
+                    block = [
+                        render_separator('┌', '┬', '┐'),
+                        render_row(all_rows[0]),
+                        render_separator('├', '┼', '┤'),
+                    ]
+                    block.extend(render_row(row) for row in all_rows[1:])
+                    block.append(render_separator('└', '┴', '┘'))
                     output.append('<pre>' + '\n'.join(block) + '</pre>')
                     index = cursor
                     continue
