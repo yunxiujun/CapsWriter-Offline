@@ -619,76 +619,7 @@ class ToastWindowBase(ABC):
             normalized.append(current)
             index += 1
         text = re.sub(r'\n{3,}', '\n\n', '\n'.join(normalized))
-        return ToastWindowBase._format_tables_as_pre(text)
-
-    @staticmethod
-    def _format_tables_as_pre(text: str) -> str:
-        """把 Markdown 表格转换为框线表格，放进等宽 <pre> 显示。
-
-        tkhtmlview 不支持 <table>，但支持 <pre> 等宽字体并保留空格。
-        用 Unicode 框线字符（┌─┬─┐│├┼┤└┴┘）绘制真正的表格外观。
-        """
-        import unicodedata
-
-        def display_width(value: str) -> int:
-            return sum(
-                2 if unicodedata.east_asian_width(ch) in ('W', 'F') else 1
-                for ch in value
-            )
-
-        lines = text.splitlines()
-        output = []
-        index = 0
-        while index < len(lines):
-            line = lines[index]
-            stripped = line.strip()
-            if stripped.startswith('|') and stripped.rstrip().endswith('|') and '|' in stripped[1:]:
-                rows = [line]
-                cursor = index + 1
-                while cursor < len(lines):
-                    next_stripped = lines[cursor].strip()
-                    if next_stripped.startswith('|') and next_stripped.rstrip().endswith('|'):
-                        rows.append(lines[cursor])
-                        cursor += 1
-                    else:
-                        break
-                if len(rows) >= 2 and re.match(r'^\s*\|[\s:|-]+\|\s*$', rows[1]):
-                    def cells_of(row: str):
-                        return [cell.strip() for cell in row.strip().strip('|').split('|')]
-                    all_rows = [cells_of(rows[0])] + [cells_of(row) for row in rows[2:]]
-                    column_count = max(len(row) for row in all_rows)
-                    widths = [0] * column_count
-                    for row in all_rows:
-                        for col, cell in enumerate(row):
-                            widths[col] = max(widths[col], display_width(cell))
-
-                    def pad(cell: str, width: int) -> str:
-                        # 使用不间断空格填充，避免 word 换行拆散表格。
-                        return cell + '\u00a0' * (width - display_width(cell))
-
-                    def render_row(row):
-                        cells = [
-                            pad(row[col] if col < len(row) else '', widths[col])
-                            for col in range(column_count)
-                        ]
-                        return '│ ' + ' │ '.join(cells) + ' │'
-
-                    def render_separator(left, middle, right):
-                        return left + middle.join('─' * (w + 2) for w in widths) + right
-
-                    block = [
-                        render_separator('┌', '┬', '┐'),
-                        render_row(all_rows[0]),
-                        render_separator('├', '┼', '┤'),
-                    ]
-                    block.extend(render_row(row) for row in all_rows[1:])
-                    block.append(render_separator('└', '┴', '┘'))
-                    output.append('<pre>' + '\n'.join(block) + '</pre>')
-                    index = cursor
-                    continue
-            output.append(line)
-            index += 1
-        return '\n'.join(output)
+        return text
 
     def _switch_to_markdown(self) -> None:
         """将内容组件切换为 Markdown 渲染"""
