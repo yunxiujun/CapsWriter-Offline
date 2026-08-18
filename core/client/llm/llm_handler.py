@@ -174,6 +174,7 @@ class LLMHandler:
         context_manager=None,
         selection_text_override=None,
         clipboard_text_override=None,
+        stop_event=None,
     ) -> Tuple[str, int, float]:
         """执行实际的 LLM 模型调用（内部方法）
 
@@ -187,7 +188,7 @@ class LLMHandler:
             (处理后的文本, 输出token数, 生成时间秒)
         """
         # 获取中断检查函数
-        should_stop_check = lambda: self.monitor.should_stop()
+        should_stop_check = lambda: self.monitor.should_stop(stop_event)
         # 获取处理后的角色名称（空字符串 -> '默认'）
         role_name = role_config.display_name or RoleConfig.DEFAULT_ROLE_NAME
         logger.debug(f"开始 LLM 核心处理 [角色: {role_name}] [内容长度: {len(content)}]")
@@ -351,6 +352,7 @@ class LLMHandler:
                 group_gap=group_gap,
                 selection_text_override=shared_selection,
                 clipboard_text_override=shared_clipboard,
+                reset_monitor=False,
             )
             for index, config in enumerate(parallel_configs)
         ]

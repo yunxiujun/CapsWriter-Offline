@@ -25,6 +25,7 @@ async def handle_toast_mode(
     group_gap: int = 0,
     selection_text_override=None,
     clipboard_text_override=None,
+    reset_monitor: bool = True,
 ) -> tuple:
     """Toast 浮动窗口模式"""
     from core.ui.toast import ToastMessageManager, ToastMessage
@@ -36,7 +37,8 @@ async def handle_toast_mode(
     if not role_config:
         return ("", 0, 0.0)
 
-    handler.monitor.reset()  # 重置停止标志
+    if reset_monitor:
+        handler.monitor.reset()  # 普通单角色请求重置停止标志
     task_stop_event = handler.monitor.create_stop_callback()
     toast_manager = ToastMessageManager()
     msg_id = None
@@ -101,9 +103,10 @@ async def handle_toast_mode(
             None,
             selection_text_override,
             clipboard_text_override,
+            task_stop_event,
         )
 
-        if handler.monitor.should_stop():
+        if handler.monitor.should_stop(task_stop_event):
             toast_manager.close_toast(msg_id)
             return (''.join(chunks) or content, token_count, gen_time)
         else:

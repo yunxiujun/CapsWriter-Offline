@@ -23,13 +23,17 @@ class StopMonitor:
         self._hotkey_manager = None
         self._is_running = False
 
-    def should_stop(self) -> bool:
+    def should_stop(self, task_event: Optional[threading.Event] = None) -> bool:
         """
         检查是否应该停止输出
 
         Returns:
             True 表示应该停止
         """
+        # 并行任务优先检查自己的停止事件，避免互相影响。
+        if task_event is not None and task_event.is_set():
+            return True
+
         # 优先检查线程局部停止标志
         local_stop = getattr(self._thread_local, 'stop_event', None)
         if local_stop and local_stop.is_set():
