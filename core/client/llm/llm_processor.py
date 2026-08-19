@@ -319,6 +319,11 @@ class LLMProcessor:
         if 'max_tokens' in response_params and 'max_output_tokens' not in response_params:
             response_params['max_output_tokens'] = response_params.pop('max_tokens')
 
+        # OpenCode Go 的 Luna 在 Responses 下不支持 temperature/top_p
+        if 'gpt-5.6-luna' in response_params.get('model', ''):
+            response_params.pop('temperature', None)
+            response_params.pop('top_p', None)
+
         start_time = time.time()
         response = client.responses.create(**response_params)
         full_response = getattr(response, 'output_text', '') or self._extract_response_text(response)
