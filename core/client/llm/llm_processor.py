@@ -296,9 +296,14 @@ class LLMProcessor:
         if should_stop_check and should_stop_check():
             return "", 0, 0.0
 
+        # 清理可能残留的 timestamp 等内部字段，Responses 仅允许 role/content
+        clean_messages = []
+        for m in params.get('messages', []):
+            if isinstance(m, dict) and 'role' in m and 'content' in m:
+                clean_messages.append({'role': m['role'], 'content': m['content']})
         response_params = {
             'model': params['model'],
-            'input': params['messages'],
+            'input': clean_messages if clean_messages else params['messages'],
         }
 
         passthrough_keys = [

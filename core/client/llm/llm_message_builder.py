@@ -77,12 +77,31 @@ class MessageBuilder:
                 )
             })
 
-        # 2. 对话历史
+        # 2. 对话历史（剔除 timestamp 等内部字段，避免传给 Responses API 报错）
         if context_manager:
-            if hasattr(context_manager, 'history') and isinstance(context_manager.history, list):
-                messages.extend(context_manager.history)
-            elif isinstance(context_manager, list):
-                messages.extend(context_manager)
+            history = None
+            if hasattr(context_manager, 'get_history'):
+                try:
+                    history = context_manager.get_history()
+                except Exception:
+                    history = None
+            if history is None:
+                if hasattr(context_manager, 'history') and isinstance(context_manager.history, list):
+                    history = [
+                        {'role': m.get('role'), 'content': m.get('content')}
+                        for m in context_manager.history
+                        if isinstance(m, dict) and 'role' in m and 'content' in m
+                    ]
+                elif isinstance(context_manager, list):
+                    history = [
+                        {'role': m.get('role'), 'content': m.get('content')}
+                        for m in context_manager
+                        if isinstance(m, dict) and 'role' in m and 'content' in m
+                    ]
+                else:
+                    history = []
+            if history:
+                messages.extend(history)
 
         # 3. 用户内容构建 (集中式构建，方便管理格式)
         context_parts = []
